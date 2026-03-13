@@ -3,6 +3,98 @@
   <p>Visit <a href="https://vuejs.org/" target="_blank" rel="noopener">vuejs.org</a> to read the documentation</p>
 </template>
 
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import { onMounted } from 'vue';
+import importDeck from './util/deck-import';
+
+onMounted(() => {
+  importDeck(mendicant);
+});
+
+const numa = `1 Sol Ring
+
+1 Dargo, the Shipwrecker
+1 Numa, Joraga Chieftain`;
+
+const mendicant = `1 Adaptive Omnitool
+1 Agility Bobblehead
+1 An Offer You Can't Refuse
+1 Ancient Den
+1 Arcane Signet
+1 Artificer's Assistant
+1 Azorius Chancery
+1 Azorius Signet
+1 Bident of Thassa
+1 Bronze Guardian
+1 Brotherhood Regalia
+1 Buried Ruin
+1 Command Tower
+1 Counterspell
+1 Cyberdrive Awakener
+1 Darksteel Citadel
+1 Desynchronization
+1 Digsite Engineer
+1 Dispatch
+1 Enlightened Tutor
+1 Esper Sentinel
+1 Etherium Sculptor
+1 Ethersworn Canonist
+1 Exotic Orchard
+1 Forensic Gadgeteer
+1 Foundry Inspector
+1 Generous Gift
+1 Gingerbrute
+1 Hope of Ghirapur
+1 Illustrious Wanderglyph
+1 Intelligence Bobblehead
+17 Island
+1 K-9, Mark I
+1 Kappa Cannoneer
+1 Lightning Greaves
+1 Lonely Arroyo
+1 Losheel, Clockwork Scholar
+1 Luck Bobblehead
+1 Master of Etherium
+1 Mechanized Production
+1 Mirrodin Besieged
+1 Muraganda Raceway
+1 Organic Extinction
+1 Ornithopter of Paradise
+1 Padeem, Consul of Innovation
+1 Path to Exile
+1 Perception Bobblehead
+7 Plains
+1 Prairie Stream
+1 Research Thief
+1 Rhystic Study
+1 Rogue's Passage
+1 Sai, Master Thopterist
+1 Scrawling Crawler
+1 Seat of the Synod
+1 Silver Raven
+1 Silver Shroud Costume
+1 Simulacrum Synthesizer
+1 Skrelv, Defector Mite
+1 Sol Ring
+1 Steel Overseer
+1 Steel Seraph
+1 Strength Bobblehead
+1 Stridehangar Automaton
+1 Stroke of Midnight
+1 Swiftfoot Boots
+1 Thopter Spy Network
+1 Thousand Moons Smithy
+1 Tranquil Cove
+1 Twinning Staff
+1 Unwinding Clock
+1 Urza, Lord High Artificer
+1 Uthros, Titanic Godcore
+1 Vedalken Archmage
+1 Vnwxt, Verbose Host
+1 Whir of Invention
+1 Worldwalker Helm
+
+1 Mendicant Core, Guidelight`;
+</script>
 
 <style scoped></style>
