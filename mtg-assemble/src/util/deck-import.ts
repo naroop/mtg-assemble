@@ -1,8 +1,8 @@
 import { createId, db } from '@/db';
-import { addBulkCardsToDeck } from '@/service';
+import { bulkAddCardsToDeck } from '@/service';
 import { Cards } from 'scryfall-api';
 
-async function importDeck(text: string) {
+async function importDeck(deckId: string, text: string) {
   const split = text.split('\n');
 
   const parsedDeck: { quantity: number; name: string }[] = split
@@ -29,8 +29,7 @@ async function importDeck(text: string) {
     };
   });
 
-  await addBulkCardsToDeck({ deckId: createId(), cards: cardsPayload });
-  console.log(await db.deckCards.toArray());
+  await bulkAddCardsToDeck({ deckId: deckId, cards: cardsPayload });
 }
 
 export default importDeck;

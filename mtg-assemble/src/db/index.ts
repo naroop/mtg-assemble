@@ -49,6 +49,7 @@ export interface EventPayloadMap {
     deckId: string;
     name: string;
     oracleId: string;
+    sourceId?: string;
     quantity: number;
   };
   deck_card_bulk_added: {

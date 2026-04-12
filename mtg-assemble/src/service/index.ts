@@ -9,6 +9,37 @@ export async function appendEvent(event: AppEvent): Promise<void> {
 
 export async function applyEvent(event: AppEvent): Promise<void> {
   switch (event.type) {
+    case 'deck_created':
+      await db.decks.put({
+        id: event.aggregateId,
+        name: event.payload.name,
+        createdAt: event.createdAt,
+        updatedAt: event.createdAt
+      });
+      return;
+
+    case 'source_created':
+      await db.sources.put({
+        id: event.aggregateId,
+        name: event.payload.name,
+        createdAt: event.createdAt,
+        updatedAt: event.createdAt
+      });
+      return;
+
+    case 'deck_card_added':
+      await db.deckCards.put({
+        id: event.aggregateId,
+        deckId: event.payload.deckId,
+        name: event.payload.name,
+        oracleId: event.payload.oracleId,
+        quantity: event.payload.quantity,
+        sourceId: event.payload.sourceId,
+        createdAt: event.createdAt,
+        updatedAt: event.createdAt
+      });
+      return;
+
     case 'deck_card_bulk_added':
       db.deckCards.bulkPut(
         event.payload.cards.map((card) => ({
@@ -22,10 +53,56 @@ export async function applyEvent(event: AppEvent): Promise<void> {
         }))
       );
       return;
+
+    case 'deck_card_quantity_set':
+      const existing = await db.deckCards.get(event.aggregateId);
+
+      if (!existing) {
+        throw new Error(`Deck card ${event.aggregateId} not found while applying quantity event`);
+      }
+
+      if (event.payload.quantity <= 0) {
+        await db.deckCards.delete(event.aggregateId);
+        return;
+      }
+
+      await db.deckCards.put({
+        ...existing,
+        quantity: event.payload.quantity,
+        updatedAt: event.createdAt
+      });
+      return;
   }
 }
 
-export async function addBulkCardsToDeck(input: { deckId: string; cards: Array<{ name: string; oracleId: string; quantity: number }> }) {
+export async function rebuildProjections() {
+  await Promise.allSettled([db.decks.clear(), db.deckCards.clear(), db.sources.clear()]);
+
+  const events = await db.events.orderBy('id').toArray();
+
+  for (const event of events) {
+    await applyEvent(event);
+  }
+}
+
+export async function createDeck(input: { deckName: string }) {
+  const now = nowIso();
+  const deckId = createId();
+
+  await appendEvent({
+    eventId: createId(),
+    type: 'deck_created',
+    aggregateId: deckId,
+    payload: { name: input.deckName },
+    createdAt: now,
+    source: 'local',
+    syncStatus: 'pending'
+  });
+
+  return deckId;
+}
+
+export async function bulkAddCardsToDeck(input: { deckId: string; cards: Array<{ name: string; oracleId: string; quantity: number }> }) {
   const now = nowIso();
 
   await appendEvent({
