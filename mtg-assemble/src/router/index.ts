@@ -4,13 +4,14 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
-      name: 'home',
       path: '/',
-      component: () => import('@/views/HomeView.vue')
+      name: 'home',
+      component: () => import('@/views/HomeView.vue'),
+      children: [{ path: '/decks/import', name: 'importDeck', component: () => import('@/views/ImportDeckView.vue') }]
     },
     {
-      name: 'dev',
       path: '/dev',
+      name: 'dev',
       component: () => import('@/views/DevView.vue')
     }
   ]
