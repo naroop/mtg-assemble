@@ -13,11 +13,11 @@ export async function applyEvent(event: AppEvent): Promise<void> {
       await db.decks.put({
         id: event.aggregateId,
         name: event.payload.name,
+        commanderOracleId: event.payload.commanderOracleId,
         createdAt: event.createdAt,
         updatedAt: event.createdAt
       });
       return;
-
     case 'source_created':
       await db.sources.put({
         id: event.aggregateId,
@@ -85,15 +85,15 @@ export async function rebuildProjections() {
   }
 }
 
-export async function createDeck(input: { deckName: string }) {
+export async function createDeck(input: { deckName: string; commanderOracleId: string }) {
   const now = nowIso();
   const deckId = createId();
 
-  await appendEvent({
+  appendEvent({
     eventId: createId(),
     type: 'deck_created',
     aggregateId: deckId,
-    payload: { name: input.deckName },
+    payload: { name: input.deckName, commanderOracleId: input.commanderOracleId },
     createdAt: now,
     source: 'local',
     syncStatus: 'pending'

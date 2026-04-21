@@ -106,7 +106,7 @@ async function importTestDeck() {
     };
   });
 
-  const deckId = await createDeck({ deckName: randomDeck[0]!.name });
+  const deckId = await createDeck({ deckName: randomDeck[0]!.name, commanderOracleId: randomDeck[0]!.oracle_id! });
   await bulkAddCardsToDeck({ deckId: deckId, cards: cardsPayload });
 }
 

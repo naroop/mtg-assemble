@@ -3,6 +3,7 @@ import Dexie, { type Table } from 'dexie';
 export interface Deck {
   id: string;
   name: string;
+  commanderOracleId: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -41,6 +42,7 @@ export interface EventMetadata {
 export interface EventPayloadMap {
   deck_created: {
     name: string;
+    commanderOracleId: string;
   };
   source_created: {
     name: string;
