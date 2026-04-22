@@ -2,9 +2,9 @@
   <div class="flex items-center gap-2 w-full">
     <div class="flex flex-col w-full">
       <div class="flex items-start gap-2 p-2">
-        <Button label="Import Test Deck" @click="importTestDeck" />
-        <Button label="Rebuild Projections" severity="warning" @click="rebuildProjections" />
-        <Button label="Clear Events" severity="danger" @click="db.events.clear()" />
+        <Button label="Test Deck" icon="pi pi-plus" @click="importTestDeck" />
+        <Button label="Rebuild Projections" icon="pi pi-refresh" severity="warning" @click="rebuildProjections" />
+        <Button label="Clear Events" icon="pi pi-trash" @click="db.events.clear()" />
       </div>
 
       <Tabs value="0">
@@ -38,6 +38,8 @@
             <DataTable :value="decks" class="w-full">
               <Column field="id" header="ID"></Column>
               <Column field="name" header="Name"></Column>
+              <Column field="commanderOracleId" header="Commander Oracle ID"></Column>
+              <Column field="commanderImageUri" header="Commander Image URI"></Column>
               <Column field="updatedAt" header="Updated At">
                 <template #body="{ data }">
                   <span>{{ new Date(data.updatedAt).toLocaleString() }}</span>

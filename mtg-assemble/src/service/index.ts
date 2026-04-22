@@ -1,4 +1,5 @@
 import { createId, db, nowIso, type AppEvent } from '@/db';
+import { Cards, type Card, type CardFace, type ImageUris } from 'scryfall-api';
 
 export async function appendEvent(event: AppEvent): Promise<void> {
   await db.transaction('rw', db.events, db.decks, db.deckCards, db.sources, async () => {
@@ -14,6 +15,7 @@ export async function applyEvent(event: AppEvent): Promise<void> {
         id: event.aggregateId,
         name: event.payload.name,
         commanderOracleId: event.payload.commanderOracleId,
+        commanderImageUri: event.payload.commanderImageUri,
         createdAt: event.createdAt,
         updatedAt: event.createdAt
       });
@@ -88,12 +90,13 @@ export async function rebuildProjections() {
 export async function createDeck(input: { deckName: string; commanderOracleId: string }) {
   const now = nowIso();
   const deckId = createId();
+  const imageUri = await getImageUriForOracleId(input.commanderOracleId);
 
   appendEvent({
     eventId: createId(),
     type: 'deck_created',
     aggregateId: deckId,
-    payload: { name: input.deckName, commanderOracleId: input.commanderOracleId },
+    payload: { name: input.deckName, commanderOracleId: input.commanderOracleId, commanderImageUri: imageUri },
     createdAt: now,
     source: 'local',
     syncStatus: 'pending'
@@ -114,4 +117,30 @@ export async function bulkAddCardsToDeck(input: { deckId: string; cards: Array<{
     source: 'local',
     syncStatus: 'pending'
   });
+}
+
+async function getImageUriForOracleId(oracleId: string, imageUri: keyof ImageUris = 'art_crop') {
+  if (!oracleId) {
+    throw new Error('oracleId must not be undefined.');
+  }
+
+  const queryResult = await Cards.search(`oracleId="${oracleId}"`).all();
+
+  if (queryResult.length > 1) {
+    throw new Error('oracleId returned multiple cards.');
+  } else if (queryResult.length < 1) {
+    throw new Error(`Card not found for oracleId="${oracleId}"`);
+  }
+
+  const card = queryResult[0]!;
+
+  return determineImageUri(card, imageUri);
+}
+
+export function determineImageUri(card: Card, imageUri: keyof ImageUris = 'art_crop') {
+  if (card.card_faces?.length && card.card_faces[0]?.image_uris) {
+    return card.card_faces[0].image_uris?.[imageUri]!;
+  }
+
+  return card.image_uris?.[imageUri]!;
 }

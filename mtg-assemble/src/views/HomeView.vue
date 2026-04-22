@@ -11,13 +11,20 @@
   <Drawer v-model:visible="visible" pt:header="p-2!">
     <h1 class="text-muted-color font-semibold py-4">Decks</h1>
     <div class="flex flex-col gap-4">
-      <RouterLink to="/decks/view" class="flex items-center gap-4 text-lg font-semibold">
+      <RouterLink to="/decks" class="flex items-center gap-4 text-lg font-semibold" @click="visible = false">
         <i class="pi pi-list text-gray-500"></i>
         <span>View</span>
       </RouterLink>
-      <RouterLink to="/decks/import" class="flex items-center gap-4 text-lg font-semibold">
+      <RouterLink to="/decks/import" class="flex items-center gap-4 text-lg font-semibold" @click="visible = false">
         <i class="pi pi-plus text-gray-500"></i>
         <span>Import</span>
+      </RouterLink>
+    </div>
+    <h1 class="text-muted-color font-semibold py-4">Advanced</h1>
+    <div class="flex flex-col gap-4">
+      <RouterLink to="/dev" class="flex items-center gap-4 text-lg font-semibold" @click="visible = false">
+        <i class="pi pi-list text-gray-500"></i>
+        <span>Developer Tools</span>
       </RouterLink>
     </div>
   </Drawer>

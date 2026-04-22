@@ -4,6 +4,7 @@ export interface Deck {
   id: string;
   name: string;
   commanderOracleId: string;
+  commanderImageUri: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -43,6 +44,7 @@ export interface EventPayloadMap {
   deck_created: {
     name: string;
     commanderOracleId: string;
+    commanderImageUri: string;
   };
   source_created: {
     name: string;

@@ -23,6 +23,7 @@
 </template>
 
 <script setup lang="ts">
+import { determineImageUri } from '@/service';
 import { Select, type SelectFilterEvent } from 'primevue';
 import { Cards } from 'scryfall-api';
 import { ref, useAttrs, useSlots } from 'vue';
@@ -80,7 +81,7 @@ const fetchCardsDebounced = debounce(async (query: string) => {
   cardOptions.value = cards.map((c) => ({
     name: c.name,
     oracleId: c.oracle_id,
-    artCrop: c.card_faces ? c.card_faces[0]?.image_uris?.art_crop : c.image_uris?.art_crop
+    artCrop: determineImageUri(c)
   }));
   emptyFilterMessage.value = emptyMessage.value = 'No results found.';
 }, 600);
