@@ -1,6 +1,6 @@
 <template>
   <div>
-    <Form v-slot="$form" :resolver="resolver" :initial-values @submit="formSubmit" class="px-4 flex flex-col gap-4">
+    <Form v-slot="$form" :resolver :initial-values @submit="formSubmit" class="px-4 flex flex-col gap-4">
       <h1 class="text-lg pt-2 pb-2 pl-1">Import from Text</h1>
       <div class="flex flex-col gap-1">
         <label for="deckName" class="ml-3 text-sm">Name</label>

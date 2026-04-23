@@ -14,9 +14,16 @@ const router = createRouter({
           component: () => import('@/views/AllDecksView.vue')
         },
         {
-          path: '/decks/:id',
+          path: '/decks/:id/list',
           name: 'deck',
-          component: () => import('@/views/DeckView.vue')
+          component: () => import('@/views/DeckView.vue'),
+          props: true
+        },
+        {
+          path: '/decks/:id/sources',
+          name: 'deckSources',
+          component: () => import('@/views/DeckView.vue'),
+          props: true
         },
         {
           path: '/decks/import',

@@ -22,6 +22,7 @@ export interface DeckCard {
 
 export interface Source {
   id: string;
+  deckId: string;
   name: string;
   createdAt: string;
   updatedAt: string;
@@ -48,6 +49,7 @@ export interface EventPayloadMap {
   };
   source_created: {
     name: string;
+    deckId: string;
   };
   deck_card_added: {
     deckId: string;
@@ -84,7 +86,7 @@ export class AppDatabase extends Dexie {
     this.version(1).stores({
       decks: 'id, name, updatedAt',
       deckCards: 'id, deckId, sourceId, oracleId, [deckId+oracleId], [deckId+sourceId], updatedAt',
-      sources: 'id, name, type, updatedAt',
+      sources: 'id, deckId, name, type, updatedAt',
       events: '++id, eventId, type, aggregateId, syncStatus, serverSequence, createdAt'
     });
   }

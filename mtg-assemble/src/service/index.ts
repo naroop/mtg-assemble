@@ -20,10 +20,12 @@ export async function applyEvent(event: AppEvent): Promise<void> {
         updatedAt: event.createdAt
       });
       return;
+
     case 'source_created':
       await db.sources.put({
         id: event.aggregateId,
         name: event.payload.name,
+        deckId: event.payload.deckId,
         createdAt: event.createdAt,
         updatedAt: event.createdAt
       });
@@ -96,13 +98,30 @@ export async function createDeck(input: { deckName: string; commanderOracleId: s
     eventId: createId(),
     type: 'deck_created',
     aggregateId: deckId,
-    payload: { name: input.deckName, commanderOracleId: input.commanderOracleId, commanderImageUri: imageUri },
+    payload: { name: input.deckName, commanderOracleId: input.commanderOracleId, commanderImageUri: imageUri ?? '' },
     createdAt: now,
     source: 'local',
     syncStatus: 'pending'
   });
 
   return deckId;
+}
+
+export async function createSource(input: { deckId: string; sourceName: string }) {
+  const now = nowIso();
+  const sourceId = createId();
+
+  appendEvent({
+    eventId: createId(),
+    type: 'source_created',
+    aggregateId: sourceId,
+    payload: { name: input.sourceName, deckId: input.deckId },
+    createdAt: now,
+    source: 'local',
+    syncStatus: 'pending'
+  });
+
+  return sourceId;
 }
 
 export async function bulkAddCardsToDeck(input: { deckId: string; cards: Array<{ name: string; oracleId: string; quantity: number }> }) {
@@ -137,7 +156,9 @@ async function getImageUriForOracleId(oracleId: string, imageUri: keyof ImageUri
   return determineImageUri(card, imageUri);
 }
 
-export function determineImageUri(card: Card, imageUri: keyof ImageUris = 'art_crop') {
+export function determineImageUri(card: Card | undefined | null, imageUri: keyof ImageUris = 'art_crop') {
+  if (!card) return;
+
   if (card.card_faces?.length && card.card_faces[0]?.image_uris) {
     return card.card_faces[0].image_uris?.[imageUri]!;
   }
