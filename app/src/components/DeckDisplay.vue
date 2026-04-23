@@ -1,5 +1,5 @@
 <template>
-  <InputText v-show="filter" v-model="filterValue" class="mb-5!" size="small" />
+  <InputText v-show="filter" v-model="filterValue" class="mb-5!" />
   <div class="columns-1 gap-4" :class="[!singleColumn ? 'sm:columns-2 lg:columns-3' : '']">
     <div
       v-for="section in organizedDeckRows.filter(

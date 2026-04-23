@@ -69,7 +69,7 @@
     </Tabs>
   </div>
 
-  <Dialog v-model:visible="showSourceSelect" class="sm:w-9/12" modal>
+  <Dialog v-model:visible="showSourceSelect" class="w-11/12 sm:w-9/12 h-full" modal>
     <DeckDisplay v-model="selectedIds" :deck-id="props.id" select filter show-unassigned />
     <template #footer>
       <Button label="Add Cards" @click="handleAddCardsToSource" />
@@ -131,6 +131,7 @@ async function formSubmit(event: FormSubmitEvent) {
 async function handleShowSourceDialog(sourceId: string) {
   showSourceSelect.value = true;
   selectedSourceId.value = sourceId;
+  selectedIds.value = [];
 }
 
 async function handleAddCardsToSource() {
