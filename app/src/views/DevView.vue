@@ -54,6 +54,7 @@
               <Column field="deckId" header="Deck ID"></Column>
               <Column field="name" header="Name"></Column>
               <Column field="oracleId" header="Oracle ID"></Column>
+              <Column field="sourceId" header="Source ID"></Column>
               <Column field="quantity" header="Quantity"></Column>
               <Column field="updatedAt" header="Updated At">
                 <template #body="{ data }">

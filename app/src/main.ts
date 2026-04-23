@@ -4,6 +4,7 @@ import { PrimeVue } from '@primevue/core';
 import { ToastService } from 'primevue';
 import Aura from '@primeuix/themes/aura';
 import { definePreset } from '@primeuix/themes';
+import Tooltip from 'primevue/tooltip';
 
 import 'primeicons/primeicons.css';
 import './tailwind.css';
@@ -33,6 +34,7 @@ const MyPreset = definePreset(Aura, {
   }
 });
 
+app.directive('tooltip', Tooltip);
 app.use(PrimeVue, { theme: { preset: MyPreset } });
 app.use(router);
 app.use(ToastService);

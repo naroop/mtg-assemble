@@ -17,6 +17,7 @@ export interface DeckCard {
   deckId: string;
   oracleId: string;
   quantity: number;
+  quantityAcquired: number;
   sourceId?: string;
   createdAt: string;
   updatedAt: string;
@@ -59,6 +60,10 @@ export interface EventPayloadMap {
     name: string;
     deckId: string;
   };
+  deck_card_bulk_assigned_to_source: {
+    sourceId: string;
+    deckCardIds: Array<string>;
+  };
   deck_card_added: {
     deckId: string;
     oracleId: string;
@@ -70,6 +75,9 @@ export interface EventPayloadMap {
     cards: Array<{ id: string; oracleId: string; quantity: number }>;
   };
   deck_card_quantity_set: {
+    quantity: number;
+  };
+  deck_card_quantity_acquired_set: {
     quantity: number;
   };
 }

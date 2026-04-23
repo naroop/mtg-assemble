@@ -37,6 +37,7 @@ export async function applyEvent(event: AppEvent): Promise<void> {
         deckId: event.payload.deckId,
         oracleId: event.payload.oracleId,
         quantity: event.payload.quantity,
+        quantityAcquired: 0,
         sourceId: event.payload.sourceId,
         createdAt: event.createdAt,
         updatedAt: event.createdAt
@@ -50,6 +51,7 @@ export async function applyEvent(event: AppEvent): Promise<void> {
           deckId: event.payload.deckId,
           oracleId: card.oracleId,
           quantity: card.quantity,
+          quantityAcquired: 0,
           createdAt: event.createdAt,
           updatedAt: event.createdAt
         }))
@@ -57,9 +59,9 @@ export async function applyEvent(event: AppEvent): Promise<void> {
       return;
 
     case 'deck_card_quantity_set':
-      const existing = await db.deckCards.get(event.aggregateId);
+      const existingQtySet = await db.deckCards.get(event.aggregateId);
 
-      if (!existing) {
+      if (!existingQtySet) {
         throw new Error(`Deck card ${event.aggregateId} not found while applying quantity event`);
       }
 
@@ -69,8 +71,35 @@ export async function applyEvent(event: AppEvent): Promise<void> {
       }
 
       await db.deckCards.put({
-        ...existing,
+        ...existingQtySet,
         quantity: event.payload.quantity,
+        updatedAt: event.createdAt
+      });
+      return;
+
+    case 'deck_card_bulk_assigned_to_source':
+      await db.deckCards.bulkUpdate(
+        event.payload.deckCardIds.map((deckCardId) => ({
+          key: deckCardId,
+          changes: { sourceId: event.payload.sourceId, updatedAt: event.createdAt }
+        }))
+      );
+      return;
+
+    case 'deck_card_quantity_acquired_set':
+      const existingQtyAcquired = await db.deckCards.get(event.aggregateId);
+
+      if (!existingQtyAcquired) {
+        throw new Error(`Deck card ${event.aggregateId} not found while applying quantity acquired event`);
+      }
+
+      if (event.payload.quantity > existingQtyAcquired.quantity) {
+        event.payload.quantity = existingQtyAcquired.quantity; // if we go over just set it to max
+      }
+
+      await db.deckCards.put({
+        ...existingQtyAcquired,
+        quantityAcquired: event.payload.quantity,
         updatedAt: event.createdAt
       });
       return;
@@ -122,6 +151,35 @@ export async function createSource(input: { deckId: string; sourceName: string }
   return sourceId;
 }
 
+export async function assignCardsToSource(input: { sourceId: string; deckCardIds: string[] }) {
+  const now = nowIso();
+  const deckCardIds = [...input.deckCardIds];
+
+  await appendEvent({
+    eventId: createId(),
+    type: 'deck_card_bulk_assigned_to_source',
+    aggregateId: '',
+    payload: { sourceId: input.sourceId, deckCardIds: deckCardIds },
+    createdAt: now,
+    source: 'local',
+    syncStatus: 'pending'
+  });
+}
+
+export async function setCardQuantityAcquired(input: { deckCardId: string; quantity: number }) {
+  const now = nowIso();
+
+  await appendEvent({
+    eventId: createId(),
+    type: 'deck_card_quantity_acquired_set',
+    aggregateId: input.deckCardId,
+    payload: { quantity: input.quantity },
+    createdAt: now,
+    source: 'local',
+    syncStatus: 'pending'
+  });
+}
+
 export async function bulkAddCardsToDeck(input: { deckId: string; cards: Array<{ oracleId: string; quantity: number }> }) {
   const now = nowIso();
 
@@ -141,19 +199,13 @@ export async function bulkAddCardsToDeck(input: { deckId: string; cards: Array<{
 async function ensureCardsCached(oracleIds: string[]) {
   const uniqueOracleIds = [...new Set(oracleIds.filter(Boolean))];
 
-  if (!uniqueOracleIds.length) {
-    return;
-  }
+  if (!uniqueOracleIds.length) return;
 
   const existingCards = await db.cards.where('oracleId').anyOf(uniqueOracleIds).toArray();
-
   const existingOracleIds = new Set(existingCards.map((card) => card.oracleId));
-
   const missingOracleIds = uniqueOracleIds.filter((oracleId) => !existingOracleIds.has(oracleId));
 
-  if (!missingOracleIds.length) {
-    return;
-  }
+  if (!missingOracleIds.length) return;
 
   const fetchedCards = await Cards.collection(...missingOracleIds.map((oracleId) => CardIdentifierBuilder.byOracleId(oracleId)));
 

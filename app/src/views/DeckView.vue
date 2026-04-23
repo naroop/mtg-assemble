@@ -18,10 +18,14 @@
         <TabPanel class="flex flex-col sm:flex-row gap-4 sm:overflow-x-scroll sm:h-[calc(100vh-8rem)]" value="sources">
           <Card class="w-full sm:min-w-md h-fit sm:w-fit" v-for="source in sources" :key="source.id">
             <template #title>
-              {{ source.name }}
+              <div class="flex justify-between items-center">
+                {{ source.name }}
+                <Button v-tooltip="'Mark as Received'" icon="pi pi-envelope" text @click="handleMarkReceived(source.id)" />
+              </div>
             </template>
             <template #content>
-              <Button class="w-full" outlined label="Add Cards" icon="pi pi-plus" text @click="showSourceSelect = true" />
+              <DeckDisplay :deck-id="props.id" :source-id="source.id" single-column />
+              <Button class="w-full" outlined label="Add Cards" icon="pi pi-plus" text @click="handleShowSourceDialog(source.id)" />
             </template>
           </Card>
 
@@ -65,15 +69,18 @@
     </Tabs>
   </div>
 
-  <Dialog v-model:visible="showSourceSelect" modal>
-    <DeckDisplay :deck-id="props.id" />
+  <Dialog v-model:visible="showSourceSelect" class="sm:w-9/12" modal>
+    <DeckDisplay v-model="selectedIds" :deck-id="props.id" select filter show-unassigned />
+    <template #footer>
+      <Button label="Add Cards" @click="handleAddCardsToSource" />
+    </template>
   </Dialog>
 </template>
 
 <script setup lang="ts">
 import DeckDisplay from '@/components/DeckDisplay.vue';
 import { db } from '@/db';
-import { createSource } from '@/service';
+import { assignCardsToSource, createSource, setCardQuantityAcquired } from '@/service';
 import { Form, type FormSubmitEvent } from '@primevue/forms';
 import { zodResolver } from '@primevue/forms/resolvers/zod';
 import { from, useObservable } from '@vueuse/rxjs';
@@ -90,6 +97,8 @@ const props = defineProps<{
 const tabValue = ref(useRoute().name === 'deck' ? 'deck' : 'sources');
 const showSourceCreateForm = ref(false);
 const showSourceSelect = ref(false);
+const selectedIds = ref<string[]>([]);
+const selectedSourceId = ref();
 
 const initialValues = ref({
   sourceName: ''
@@ -117,5 +126,28 @@ async function formSubmit(event: FormSubmitEvent) {
     showSourceCreateForm.value = false;
     event.reset();
   }
+}
+
+async function handleShowSourceDialog(sourceId: string) {
+  showSourceSelect.value = true;
+  selectedSourceId.value = sourceId;
+}
+
+async function handleAddCardsToSource() {
+  console.log(selectedSourceId.value, selectedIds.value);
+  await assignCardsToSource({ sourceId: selectedSourceId.value, deckCardIds: selectedIds.value });
+  showSourceSelect.value = false;
+}
+
+async function handleMarkReceived(sourceId: string) {
+  const deckCards = await db.deckCards.where('sourceId').equals(sourceId).toArray();
+
+  const isReceived = await checkIsReceived(sourceId);
+  await Promise.allSettled(deckCards.map((card) => setCardQuantityAcquired({ deckCardId: card.id, quantity: isReceived ? 0 : card.quantity })));
+}
+
+async function checkIsReceived(sourceId: string) {
+  const deckCards = await db.deckCards.where('sourceId').equals(sourceId).toArray();
+  return deckCards.every((card) => card.quantity === card.quantityAcquired);
 }
 </script>
