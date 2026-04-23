@@ -1,5 +1,5 @@
-import { createId, db, nowIso, type AppEvent } from '@/db';
-import { Cards, type Card, type CardFace, type ImageUris } from 'scryfall-api';
+import { createId, db, nowIso, type AppEvent, type CardType } from '@/db';
+import { CardIdentifierBuilder, Cards, type Card, type CardFace, type ImageUris } from 'scryfall-api';
 
 export async function appendEvent(event: AppEvent): Promise<void> {
   await db.transaction('rw', db.events, db.decks, db.deckCards, db.sources, async () => {
@@ -35,7 +35,6 @@ export async function applyEvent(event: AppEvent): Promise<void> {
       await db.deckCards.put({
         id: event.aggregateId,
         deckId: event.payload.deckId,
-        name: event.payload.name,
         oracleId: event.payload.oracleId,
         quantity: event.payload.quantity,
         sourceId: event.payload.sourceId,
@@ -49,7 +48,6 @@ export async function applyEvent(event: AppEvent): Promise<void> {
         event.payload.cards.map((card) => ({
           id: card.id,
           deckId: event.payload.deckId,
-          name: card.name,
           oracleId: card.oracleId,
           quantity: card.quantity,
           createdAt: event.createdAt,
@@ -124,7 +122,7 @@ export async function createSource(input: { deckId: string; sourceName: string }
   return sourceId;
 }
 
-export async function bulkAddCardsToDeck(input: { deckId: string; cards: Array<{ name: string; oracleId: string; quantity: number }> }) {
+export async function bulkAddCardsToDeck(input: { deckId: string; cards: Array<{ oracleId: string; quantity: number }> }) {
   const now = nowIso();
 
   await appendEvent({
@@ -136,6 +134,40 @@ export async function bulkAddCardsToDeck(input: { deckId: string; cards: Array<{
     source: 'local',
     syncStatus: 'pending'
   });
+
+  await ensureCardsCached(input.cards.map((card) => card.oracleId));
+}
+
+async function ensureCardsCached(oracleIds: string[]) {
+  const uniqueOracleIds = [...new Set(oracleIds.filter(Boolean))];
+
+  if (!uniqueOracleIds.length) {
+    return;
+  }
+
+  const existingCards = await db.cards.where('oracleId').anyOf(uniqueOracleIds).toArray();
+
+  const existingOracleIds = new Set(existingCards.map((card) => card.oracleId));
+
+  const missingOracleIds = uniqueOracleIds.filter((oracleId) => !existingOracleIds.has(oracleId));
+
+  if (!missingOracleIds.length) {
+    return;
+  }
+
+  const fetchedCards = await Cards.collection(...missingOracleIds.map((oracleId) => CardIdentifierBuilder.byOracleId(oracleId)));
+
+  const now = new Date().toISOString();
+
+  await db.cards.bulkPut(
+    fetchedCards
+      .filter((card) => card.oracle_id)
+      .map((card) => ({
+        oracleId: card.oracle_id!,
+        raw: card,
+        updatedAt: now
+      }))
+  );
 }
 
 async function getImageUriForOracleId(oracleId: string, imageUri: keyof ImageUris = 'art_crop') {

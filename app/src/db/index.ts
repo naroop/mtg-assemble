@@ -1,4 +1,7 @@
 import Dexie, { type Table } from 'dexie';
+import type { Card } from 'scryfall-api';
+
+export type CardType = 'creature' | 'sorcery' | 'artifact' | 'instant' | 'enchantment' | 'planeswalker' | 'battle' | 'land' | 'unknown';
 
 export interface Deck {
   id: string;
@@ -12,11 +15,16 @@ export interface Deck {
 export interface DeckCard {
   id: string;
   deckId: string;
-  name: string;
   oracleId: string;
   quantity: number;
   sourceId?: string;
   createdAt: string;
+  updatedAt: string;
+}
+
+export interface CachedCard {
+  oracleId: string;
+  raw: Card;
   updatedAt: string;
 }
 
@@ -53,14 +61,13 @@ export interface EventPayloadMap {
   };
   deck_card_added: {
     deckId: string;
-    name: string;
     oracleId: string;
     sourceId?: string;
     quantity: number;
   };
   deck_card_bulk_added: {
     deckId: string;
-    cards: Array<{ id: string; name: string; oracleId: string; quantity: number }>;
+    cards: Array<{ id: string; oracleId: string; quantity: number }>;
   };
   deck_card_quantity_set: {
     quantity: number;
@@ -77,6 +84,7 @@ export type AppEvent = {
 export class AppDatabase extends Dexie {
   decks!: Table<Deck, string>;
   deckCards!: Table<DeckCard, string>;
+  cards!: Table<CachedCard, string>;
   sources!: Table<Source, string>;
   events!: Table<AppEvent, number>;
 
@@ -86,6 +94,7 @@ export class AppDatabase extends Dexie {
     this.version(1).stores({
       decks: 'id, name, updatedAt',
       deckCards: 'id, deckId, sourceId, oracleId, [deckId+oracleId], [deckId+sourceId], updatedAt',
+      cards: 'oracleId',
       sources: 'id, deckId, name, type, updatedAt',
       events: '++id, eventId, type, aggregateId, syncStatus, serverSequence, createdAt'
     });

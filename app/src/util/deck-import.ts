@@ -1,5 +1,6 @@
-import { bulkAddCardsToDeck } from '@/service';
+import { bulkAddCardsToDeck, determineImageUri } from '@/service';
 import { CardIdentifierBuilder, Cards, type Card as ScryfallCard } from 'scryfall-api';
+import { determineCardType } from './cards-util';
 
 function normalizeCardName(name: string): string {
   return name.replace(/\s*\/\s*/g, ' // ');
@@ -63,6 +64,13 @@ async function importDeck(deckId: string, text: string) {
 
     const scryfallCard = fetchedByName.get(fullNameKey) ?? fetchedByName.get(frontFaceKey);
 
+    if (!scryfallCard) {
+      console.error('Card not found on Scryfall', {
+        parsedCard: card,
+        fetchedCards
+      });
+    }
+
     const oracleId = scryfallCard?.oracle_id;
 
     if (!oracleId) {
@@ -73,7 +81,6 @@ async function importDeck(deckId: string, text: string) {
     }
 
     return {
-      name: card.name,
       oracleId: oracleId ?? 'N/A',
       quantity: card.quantity
     };

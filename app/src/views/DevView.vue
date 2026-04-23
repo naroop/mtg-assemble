@@ -102,7 +102,6 @@ async function importTestDeck() {
 
   const cardsPayload = randomDeck.map((card) => {
     return {
-      name: card.name,
       oracleId: card.oracle_id!,
       quantity: 1
     };

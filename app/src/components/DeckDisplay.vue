@@ -7,8 +7,8 @@
 
       <ul v-if="section.rows?.length" class="flex flex-col gap-3">
         <li v-for="row in section.rows" :key="row.deckCard.id" class="flex gap-2 items-center">
-          <img class="rounded w-12" :src="determineImageUri(row.scryfallCard)" />
-          {{ row.scryfallCard?.name ?? 'Unknown card' }}
+          <img class="rounded w-12" :src="determineImageUri(row.cachedCard?.raw)" />
+          {{ row.cachedCard?.raw.name ?? 'Unknown card' }}
         </li>
       </ul>
 
@@ -18,73 +18,46 @@
 </template>
 
 <script setup lang="ts">
-import { db, type DeckCard } from '@/db';
+import { db, type CachedCard, type CardType, type DeckCard } from '@/db';
 import { determineImageUri } from '@/service';
-import { determineCardType, type CardType } from '@/util/cards-util';
+import { determineCardType } from '@/util/cards-util';
 import { from, useObservable } from '@vueuse/rxjs';
 import { liveQuery } from 'dexie';
-import { Cards, type Card } from 'scryfall-api';
-import { computed, ref, watch } from 'vue';
+import { computed } from 'vue';
 
 interface DeckRow {
   deckCard: DeckCard;
-  scryfallCard: Card | null;
+  cachedCard: CachedCard | null;
 }
 
 const props = defineProps<{ deckId: string }>();
 
-const deckCards = useObservable(
+const deckRows = useObservable<DeckRow[]>(
   from(
-    liveQuery(() => {
-      return db.deckCards.where('deckId').equals(props.deckId).toArray();
+    liveQuery(async () => {
+      if (!props.deckId) {
+        return [];
+      }
+
+      const deckCards = await db.deckCards.where('deckId').equals(props.deckId).toArray();
+
+      if (!deckCards.length) {
+        return [];
+      }
+
+      const oracleIds = [...new Set(deckCards.map((card) => card.oracleId))];
+
+      const cachedCards = await db.cards.where('oracleId').anyOf(oracleIds).toArray();
+
+      const cachedCardsByOracleId = new Map<string, CachedCard>(cachedCards.map((card) => [card.oracleId, card]));
+
+      return deckCards.map((deckCard) => ({
+        deckCard,
+        cachedCard: cachedCardsByOracleId.get(deckCard.oracleId) ?? null
+      }));
     })
   )
 );
-
-const scryfallCardsByOracleId = ref<Record<string, Card>>({});
-const isLoading = ref(false);
-
-const uniqueOracleIds = computed(() => {
-  return [...new Set(deckCards.value?.map((card) => card.oracleId))];
-});
-
-watch(
-  uniqueOracleIds,
-  async (oracleIds) => {
-    if (!oracleIds.length) {
-      scryfallCardsByOracleId.value = {};
-      return;
-    }
-
-    isLoading.value = true;
-
-    const cards = await Cards.collection(
-      ...oracleIds.map((oracleId) => ({
-        oracle_id: oracleId
-      }))
-    );
-
-    const map: Record<string, Card> = {};
-
-    for (const card of cards) {
-      if (card.oracle_id) {
-        map[card.oracle_id] = card;
-      }
-    }
-
-    scryfallCardsByOracleId.value = map;
-
-    isLoading.value = false;
-  },
-  { immediate: true }
-);
-
-const deckRows = computed<DeckRow[] | undefined>(() => {
-  return deckCards.value?.map((deckCard) => ({
-    deckCard,
-    scryfallCard: scryfallCardsByOracleId.value[deckCard.oracleId] ?? null
-  }));
-});
 
 const organizedDeckRows = computed(() => {
   const map: Record<CardType, DeckRow[]> = {
@@ -95,11 +68,12 @@ const organizedDeckRows = computed(() => {
     enchantment: [],
     planeswalker: [],
     battle: [],
-    land: []
+    land: [],
+    unknown: []
   };
 
   for (const row of deckRows.value ?? []) {
-    const card = row.scryfallCard;
+    const card = row.cachedCard?.raw;
     if (!card) continue;
 
     const type = determineCardType(card);
