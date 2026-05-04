@@ -5,33 +5,33 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      name: 'home',
+      redirect: '/decks',
       component: () => import('@/views/HomeView.vue'),
       children: [
         {
-          path: '/decks',
+          path: 'decks',
           name: 'decks',
           component: () => import('@/views/AllDecksView.vue')
         },
         {
-          path: '/decks/:id/list',
+          path: 'decks/:id/list',
           name: 'deck',
           component: () => import('@/views/DeckView.vue'),
           props: true
         },
         {
-          path: '/decks/:id/sources',
+          path: 'decks/:id/sources',
           name: 'deckSources',
           component: () => import('@/views/DeckView.vue'),
           props: true
         },
         {
-          path: '/decks/import',
+          path: 'decks/import',
           name: 'importDeck',
           component: () => import('@/views/ImportDeckView.vue')
         },
         {
-          path: '/dev',
+          path: 'dev',
           name: 'dev',
           component: () => import('@/views/DevView.vue')
         }
