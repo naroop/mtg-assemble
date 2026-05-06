@@ -115,12 +115,12 @@ watch(
 
 const organizedDeckRows = computed(() => {
   const map: Record<CardType, DeckRow[]> = {
+    planeswalker: [],
     creature: [],
+    instant: [],
     sorcery: [],
     artifact: [],
-    instant: [],
     enchantment: [],
-    planeswalker: [],
     battle: [],
     land: [],
     unknown: []
@@ -134,6 +134,15 @@ const organizedDeckRows = computed(() => {
     if (type) {
       map[type].push(row);
     }
+  }
+
+  for (const rows of Object.values(map)) {
+    rows.sort((a, b) => {
+      const aName = a.cachedCard?.raw?.name ?? '';
+      const bName = b.cachedCard?.raw?.name ?? '';
+
+      return aName.localeCompare(bName);
+    });
   }
 
   return Object.entries(map)

@@ -25,7 +25,12 @@
 
         <!-- SOURCES -->
         <TabPanel class="flex flex-col sm:flex-row gap-4 sm:h-[calc(100vh-11rem)] p-4 overflow-y-scroll" value="sources">
-          <Card class="w-full sm:min-w-md h-fit sm:w-fit" v-for="source in sources" :key="source.id">
+          <Card
+            class="w-full sm:min-w-md h-fit sm:w-fit"
+            v-for="source in sources?.sort((a, b) => {
+              return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+            })"
+            :key="source.id">
             <template #title>
               <div class="flex justify-between items-center">
                 {{ source.name }}
