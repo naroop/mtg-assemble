@@ -1,5 +1,5 @@
 <template>
-  <div class="px-2">
+  <div>
     <Tabs v-model:value="tabValue">
       <TabList class="dark:bg-inherit!">
         <Tab value="deck">
@@ -10,12 +10,12 @@
         </Tab>
       </TabList>
 
-      <TabPanels class="dark:bg-inherit!">
-        <TabPanel value="deck">
+      <TabPanels class="dark:bg-inherit! p-0!">
+        <TabPanel class="p-4" value="deck">
           <DeckDisplay :deck-id="props.id" />
         </TabPanel>
 
-        <TabPanel class="flex flex-col sm:flex-row gap-4 sm:overflow-x-scroll sm:h-[calc(100vh-8rem)]" value="sources">
+        <TabPanel class="flex flex-col sm:flex-row gap-4 sm:h-[calc(100vh-7.1rem)] p-4" value="sources">
           <Card class="w-full sm:min-w-md h-fit sm:w-fit" v-for="source in sources" :key="source.id">
             <template #title>
               <div class="flex justify-between items-center">
