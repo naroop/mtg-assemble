@@ -58,6 +58,10 @@ export async function applyEvent(event: AppEvent): Promise<void> {
       );
       return;
 
+    case 'deck_card_bulk_removed':
+      db.deckCards.bulkDelete(event.payload.deckCardIds);
+      return;
+
     case 'deck_card_quantity_set':
       const existingQtySet = await db.deckCards.get(event.aggregateId);
 
@@ -183,6 +187,8 @@ export async function setCardQuantityAcquired(input: { deckCardId: string; quant
 export async function bulkAddCardsToDeck(input: { deckId: string; cards: Array<{ oracleId: string; quantity: number }> }) {
   const now = nowIso();
 
+  await ensureCardsCached(input.cards.map((card) => card.oracleId));
+
   await appendEvent({
     eventId: createId(),
     type: 'deck_card_bulk_added',
@@ -192,8 +198,20 @@ export async function bulkAddCardsToDeck(input: { deckId: string; cards: Array<{
     source: 'local',
     syncStatus: 'pending'
   });
+}
 
-  await ensureCardsCached(input.cards.map((card) => card.oracleId));
+export async function bulkRemoveCardsFromDeck(input: { deckCardIds: string[] }) {
+  const now = nowIso();
+
+  await appendEvent({
+    eventId: createId(),
+    type: 'deck_card_bulk_removed',
+    aggregateId: '',
+    payload: { deckCardIds: input.deckCardIds },
+    createdAt: now,
+    source: 'local',
+    syncStatus: 'pending'
+  });
 }
 
 async function ensureCardsCached(oracleIds: string[]) {
@@ -208,6 +226,7 @@ async function ensureCardsCached(oracleIds: string[]) {
   if (!missingOracleIds.length) return;
 
   const fetchedCards = await Cards.collection(...missingOracleIds.map((oracleId) => CardIdentifierBuilder.byOracleId(oracleId)));
+  console.log('Fetched Cards:', fetchedCards);
 
   const now = new Date().toISOString();
 

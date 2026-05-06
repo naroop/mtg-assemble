@@ -19,6 +19,15 @@ function isSplitStyleName(name: string): boolean {
 }
 
 async function importDeck(deckId: string, text: string) {
+  const cardsPayload = await parseDeckToOracleIds(text);
+
+  await bulkAddCardsToDeck({
+    deckId,
+    cards: cardsPayload
+  });
+}
+
+export async function parseDeckToOracleIds(text: string) {
   const parsedDeck: { quantity: number; name: string }[] = text
     .split('\n')
     .map((line) => line.trim())
@@ -69,6 +78,7 @@ async function importDeck(deckId: string, text: string) {
         parsedCard: card,
         fetchedCards
       });
+      throw new Error('Card not found on Scryfall');
     }
 
     const oracleId = scryfallCard?.oracle_id;
@@ -78,18 +88,16 @@ async function importDeck(deckId: string, text: string) {
         parsedCard: card,
         fetchedCards
       });
+      throw new Error('oracleId not found');
     }
 
     return {
-      oracleId: oracleId ?? 'N/A',
+      oracleId: oracleId,
       quantity: card.quantity
     };
   });
 
-  await bulkAddCardsToDeck({
-    deckId,
-    cards: cardsPayload
-  });
+  return cardsPayload;
 }
 
 export default importDeck;

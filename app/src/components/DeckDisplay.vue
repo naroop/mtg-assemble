@@ -107,6 +107,8 @@ watch(
       deckCard,
       cachedCard: cachedCardsByOracleId.get(deckCard.oracleId) ?? null
     }));
+
+    console.log(deckRows.value);
   },
   { immediate: true }
 );

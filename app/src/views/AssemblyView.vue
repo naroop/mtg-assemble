@@ -2,19 +2,25 @@
   <div>
     <Tabs v-model:value="tabValue">
       <TabList class="dark:bg-inherit!">
-        <Tab value="deck">
-          <RouterLink :to="{ name: 'deck' }">Deck</RouterLink>
+        <Tab value="deck" class="p-0!">
+          <RouterLink :to="{ name: 'deck' }" class="block px-4 py-4.5 w-full h-full">Deck</RouterLink>
         </Tab>
-        <Tab value="sources">
-          <RouterLink :to="{ name: 'deckSources' }">Sources</RouterLink>
+        <Tab value="sources" class="p-0!">
+          <RouterLink :to="{ name: 'deckSources' }" class="block px-4 py-4.5 w-full h-full">Sources</RouterLink>
         </Tab>
       </TabList>
 
       <TabPanels class="dark:bg-inherit! p-0!">
-        <TabPanel class="p-4" value="deck">
+        <!-- DECK -->
+        <TabPanel class="pt-2 p-4" value="deck">
+          <div class="flex justify-between items-center pb-2">
+            <span class="text-lg font-semibold">{{ deck?.name }}</span>
+            <Button label="Import" size="small" severity="success" @click="handleShowDeckImport" />
+          </div>
           <DeckDisplay :deck-cards="deckCards" />
         </TabPanel>
 
+        <!-- SOURCES -->
         <TabPanel class="flex flex-col sm:flex-row gap-4 sm:h-[calc(100vh-7.1rem)] p-4 overflow-y-scroll" value="sources">
           <Card class="w-full sm:min-w-md h-fit sm:w-fit" v-for="source in sources" :key="source.id">
             <template #title>
@@ -43,7 +49,13 @@
                 label="New Source"
                 severity="secondary"
                 @click="showSourceCreateForm = true" />
-              <Form v-show="showSourceCreateForm" v-slot="$form" :resolver :initial-values @submit="formSubmit" class="flex flex-col gap-4 w-full">
+              <Form
+                v-show="showSourceCreateForm"
+                v-slot="$form"
+                :resolver
+                :initial-values
+                @submit="formSubmit"
+                class="flex flex-col gap-4 sm:mx-4 w-3xs">
                 <div class="flex flex-col gap-1">
                   <label for="sourceName" class="ml-3 text-sm">Source Name</label>
                   <InputText name="sourceName" />
@@ -79,17 +91,28 @@
       <Button label="Add Cards" @click="handleAddCardsToSource" />
     </template>
   </Dialog>
+
+  <Dialog v-model:visible="showDeckImport" class="w-11/12 sm:w-4/12" header="Import Deck" modal>
+    <div class="flex w-full">
+      <Textarea v-model:model-value="importDeckText" class="w-full" rows="15" style="resize: none" placeholder="Paste your decklist here." />
+    </div>
+
+    <template #footer>
+      <Button label="Import & Replace" severity="success" @click="handleImportAndReplace" :loading="isImportLoading" />
+    </template>
+  </Dialog>
 </template>
 
 <script setup lang="ts">
 import DeckDisplay from '@/components/DeckDisplay.vue';
 import { db, type DeckCard } from '@/db';
-import { assignCardsToSource, createSource, setCardQuantityAcquired } from '@/service';
+import { assignCardsToSource, bulkAddCardsToDeck, bulkRemoveCardsFromDeck, createSource, setCardQuantityAcquired } from '@/service';
+import { parseDeckToOracleIds } from '@/util/deck-import';
 import { Form, type FormSubmitEvent } from '@primevue/forms';
 import { zodResolver } from '@primevue/forms/resolvers/zod';
 import { from, useObservable } from '@vueuse/rxjs';
 import { liveQuery } from 'dexie';
-import { Button, Card, Dialog, InputText, Message, Tab, TabList, TabPanel, TabPanels, Tabs } from 'primevue';
+import { Button, Card, Dialog, InputText, Message, Tab, TabList, TabPanel, TabPanels, Tabs, Textarea, useToast } from 'primevue';
 import { ref } from 'vue';
 import { useRoute } from 'vue-router';
 import z from 'zod';
@@ -101,8 +124,13 @@ const props = defineProps<{
 const tabValue = ref(useRoute().name === 'deck' ? 'deck' : 'sources');
 const showSourceCreateForm = ref(false);
 const showSourceSelect = ref(false);
+const showDeckImport = ref(false);
 const selectedIds = ref<string[]>([]);
 const selectedSourceId = ref();
+const importDeckText = ref('');
+const isImportLoading = ref(false);
+
+const toast = useToast();
 
 const initialValues = ref({
   sourceName: ''
@@ -112,6 +140,14 @@ const resolver = ref(
   zodResolver(
     z.object({
       sourceName: z.string().min(1, { message: 'Source name is required.' })
+    })
+  )
+);
+
+const deck = useObservable(
+  from(
+    liveQuery(() => {
+      return db.decks.get(props.id);
     })
   )
 );
@@ -140,15 +176,60 @@ async function formSubmit(event: FormSubmitEvent) {
   }
 }
 
-async function handleShowSourceDialog(sourceId: string) {
+function handleShowSourceDialog(sourceId: string) {
   showSourceSelect.value = true;
   selectedSourceId.value = sourceId;
   selectedIds.value = [];
 }
 
+function handleShowDeckImport() {
+  showDeckImport.value = true;
+  importDeckText.value = '';
+}
+
 async function handleAddCardsToSource() {
   await assignCardsToSource({ sourceId: selectedSourceId.value, deckCardIds: selectedIds.value });
   showSourceSelect.value = false;
+}
+
+async function handleImportAndReplace() {
+  try {
+    if (!deck.value) {
+      throw new Error('No deck found while trying to import and replace.');
+    }
+
+    isImportLoading.value = true;
+
+    const parsedDeck = await parseDeckToOracleIds(importDeckText.value);
+    const existingDeckCards = deckCards.value ?? [];
+    const cardsToRemove = existingDeckCards.filter((deckCard) => !parsedDeck.some((card) => card.oracleId === deckCard.oracleId));
+    const cardsToAdd = parsedDeck.filter((card) => !existingDeckCards.some((deckCard) => deckCard.oracleId === card.oracleId));
+
+    if (!cardsToRemove.length && !cardsToAdd.length) {
+      toast.add({ summary: 'Import Cancelled', detail: 'No changes detected in the new list.', life: 3000, severity: 'warn' });
+      return;
+    }
+
+    await bulkRemoveCardsFromDeck({ deckCardIds: cardsToRemove.map((c) => c.id) });
+    await bulkAddCardsToDeck({ deckId: deck.value?.id, cards: cardsToAdd });
+
+    toast.add({
+      summary: 'Import Successful',
+      detail: `Removed ${cardsToRemove.length} card(s).\nAdded ${cardsToAdd.length} card(s).`,
+      life: 4000,
+      severity: 'success'
+    });
+  } catch (e) {
+    console.error(e);
+    toast.add({
+      summary: 'Import Not Successful',
+      detail: e,
+      severity: 'error'
+    });
+    return;
+  } finally {
+    isImportLoading.value = false;
+  }
 }
 
 async function handleMarkReceived(sourceId: string) {

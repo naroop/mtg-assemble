@@ -11,18 +11,18 @@ const router = createRouter({
         {
           path: 'decks',
           name: 'decks',
-          component: () => import('@/views/AllDecksView.vue')
+          component: () => import('@/views/DecksView.vue')
         },
         {
           path: 'decks/:id/list',
           name: 'deck',
-          component: () => import('@/views/DeckView.vue'),
+          component: () => import('@/views/AssemblyView.vue'),
           props: true
         },
         {
           path: 'decks/:id/sources',
           name: 'deckSources',
-          component: () => import('@/views/DeckView.vue'),
+          component: () => import('@/views/AssemblyView.vue'),
           props: true
         },
         {

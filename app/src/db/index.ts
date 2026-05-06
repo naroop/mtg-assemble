@@ -74,6 +74,9 @@ export interface EventPayloadMap {
     deckId: string;
     cards: Array<{ id: string; oracleId: string; quantity: number }>;
   };
+  deck_card_bulk_removed: {
+    deckCardIds: Array<string>;
+  };
   deck_card_quantity_set: {
     quantity: number;
   };
