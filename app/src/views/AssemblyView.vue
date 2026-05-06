@@ -1,5 +1,12 @@
 <template>
   <div>
+    <div class="flex items-center justify-between mx-2 mr-4">
+      <RouterLink :to="{ name: 'home' }" class="flex items-center gap-2 w-fit p-2 hover:opacity-50 transition-opacity">
+        <i class="pi pi-chevron-left"></i>
+        <div class="text-xl font-semibold mb-1">{{ deck?.name }}</div>
+      </RouterLink>
+      <Button label="Import" size="small" severity="success" @click="handleShowDeckImport" />
+    </div>
     <Tabs v-model:value="tabValue">
       <TabList class="dark:bg-inherit!">
         <Tab value="deck" class="p-0!">
@@ -13,15 +20,11 @@
       <TabPanels class="dark:bg-inherit! p-0!">
         <!-- DECK -->
         <TabPanel class="pt-2 p-4" value="deck">
-          <div class="flex justify-between items-center pb-2">
-            <span class="text-lg font-semibold">{{ deck?.name }}</span>
-            <Button label="Import" size="small" severity="success" @click="handleShowDeckImport" />
-          </div>
           <DeckDisplay :deck-cards="deckCards" />
         </TabPanel>
 
         <!-- SOURCES -->
-        <TabPanel class="flex flex-col sm:flex-row gap-4 sm:h-[calc(100vh-7.1rem)] p-4 overflow-y-scroll" value="sources">
+        <TabPanel class="flex flex-col sm:flex-row gap-4 sm:h-[calc(100vh-11rem)] p-4 overflow-y-scroll" value="sources">
           <Card class="w-full sm:min-w-md h-fit sm:w-fit" v-for="source in sources" :key="source.id">
             <template #title>
               <div class="flex justify-between items-center">

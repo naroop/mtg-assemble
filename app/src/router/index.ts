@@ -5,6 +5,7 @@ const router = createRouter({
   routes: [
     {
       path: '/',
+      name: 'home',
       redirect: '/decks',
       component: () => import('@/views/HomeView.vue'),
       children: [
