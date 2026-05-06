@@ -12,10 +12,10 @@
 
       <TabPanels class="dark:bg-inherit! p-0!">
         <TabPanel class="p-4" value="deck">
-          <DeckDisplay :deck-id="props.id" />
+          <DeckDisplay :deck-cards="deckCards" />
         </TabPanel>
 
-        <TabPanel class="flex flex-col sm:flex-row gap-4 sm:h-[calc(100vh-7.1rem)] p-4" value="sources">
+        <TabPanel class="flex flex-col sm:flex-row gap-4 sm:h-[calc(100vh-7.1rem)] p-4 overflow-y-scroll" value="sources">
           <Card class="w-full sm:min-w-md h-fit sm:w-fit" v-for="source in sources" :key="source.id">
             <template #title>
               <div class="flex justify-between items-center">
@@ -24,7 +24,11 @@
               </div>
             </template>
             <template #content>
-              <DeckDisplay :deck-id="props.id" :source-id="source.id" single-column />
+              <DeckDisplay :deck-cards="deckCards" :source-id="source.id" single-column @row-click="handleDeckCardReceived">
+                <template #cardActions="slotProps">
+                  <Button icon="pi pi-minus" text severity="danger" size="small" @click.stop="handleRemoveDeckCardFromSource(slotProps.deckCard)" />
+                </template>
+              </DeckDisplay>
               <Button class="w-full" outlined label="Add Cards" icon="pi pi-plus" text @click="handleShowSourceDialog(source.id)" />
             </template>
           </Card>
@@ -70,7 +74,7 @@
   </div>
 
   <Dialog v-model:visible="showSourceSelect" class="w-11/12 sm:w-9/12 h-full" modal>
-    <DeckDisplay v-model="selectedIds" :deck-id="props.id" select filter show-unassigned />
+    <DeckDisplay v-model="selectedIds" :deck-cards="deckCards" select filter show-unassigned />
     <template #footer>
       <Button label="Add Cards" @click="handleAddCardsToSource" />
     </template>
@@ -79,7 +83,7 @@
 
 <script setup lang="ts">
 import DeckDisplay from '@/components/DeckDisplay.vue';
-import { db } from '@/db';
+import { db, type DeckCard } from '@/db';
 import { assignCardsToSource, createSource, setCardQuantityAcquired } from '@/service';
 import { Form, type FormSubmitEvent } from '@primevue/forms';
 import { zodResolver } from '@primevue/forms/resolvers/zod';
@@ -112,6 +116,14 @@ const resolver = ref(
   )
 );
 
+const deckCards = useObservable(
+  from(
+    liveQuery(() => {
+      return db.deckCards.where('deckId').equals(props.id).toArray();
+    })
+  )
+);
+
 const sources = useObservable(
   from(
     liveQuery(() => {
@@ -135,7 +147,6 @@ async function handleShowSourceDialog(sourceId: string) {
 }
 
 async function handleAddCardsToSource() {
-  console.log(selectedSourceId.value, selectedIds.value);
   await assignCardsToSource({ sourceId: selectedSourceId.value, deckCardIds: selectedIds.value });
   showSourceSelect.value = false;
 }
@@ -143,11 +154,21 @@ async function handleAddCardsToSource() {
 async function handleMarkReceived(sourceId: string) {
   const deckCards = await db.deckCards.where('sourceId').equals(sourceId).toArray();
 
-  const isReceived = await checkIsReceived(sourceId);
+  const isReceived = await checkIsEntireSourceReceived(sourceId);
   await Promise.allSettled(deckCards.map((card) => setCardQuantityAcquired({ deckCardId: card.id, quantity: isReceived ? 0 : card.quantity })));
 }
 
-async function checkIsReceived(sourceId: string) {
+async function handleDeckCardReceived(deckCard: DeckCard) {
+  const isReceived = deckCard?.quantity === deckCard?.quantityAcquired;
+  await setCardQuantityAcquired({ deckCardId: deckCard.id, quantity: isReceived ? 0 : deckCard.quantity });
+}
+
+async function handleRemoveDeckCardFromSource(deckCard: DeckCard) {
+  if (deckCard.quantityAcquired !== 0) await setCardQuantityAcquired({ deckCardId: deckCard.id, quantity: 0 });
+  await assignCardsToSource({ sourceId: '', deckCardIds: [deckCard.id] });
+}
+
+async function checkIsEntireSourceReceived(sourceId: string) {
   const deckCards = await db.deckCards.where('sourceId').equals(sourceId).toArray();
   return deckCards.every((card) => card.quantity === card.quantityAcquired);
 }

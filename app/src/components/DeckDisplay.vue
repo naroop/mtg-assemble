@@ -15,28 +15,33 @@
         <li
           v-for="row in section.rows.filter((row) => row.cachedCard?.raw.name.toLowerCase().includes(filterValue.toLowerCase()))"
           :key="row.deckCard.id"
-          class="flex gap-2 items-center rounded transition"
+          class="rounded transition flex justify-between"
           :class="[
             select ? 'cursor-pointer hover:bg-surface-100 dark:hover:bg-surface-800 p-2' : '',
             modelValue.includes(row.deckCard.id) ? 'bg-primary-50 dark:bg-primary-900/20' : '',
             select && modelValue.length > 0 && !modelValue.includes(row.deckCard.id) ? 'opacity-50' : ''
           ]"
-          @click="handleRowClick(row.deckCard.id)">
-          <Checkbox
-            v-if="select"
-            binary
-            :model-value="modelValue.includes(row.deckCard.id)"
-            @update:model-value="toggleSelection(row.deckCard.id)"
-            @click.stop />
+          @click="handleRowClick(row.deckCard)">
+          <div class="flex gap-2 items-center">
+            <Checkbox
+              v-if="select"
+              binary
+              :model-value="modelValue.includes(row.deckCard.id)"
+              @update:model-value="toggleSelection(row.deckCard.id)"
+              @click.stop />
 
-          <img
-            class="rounded w-12"
-            :class="[row.deckCard.quantity === row.deckCard.quantityAcquired ? 'opacity-20' : '']"
-            :src="determineImageUri(row.cachedCard?.raw)" />
-          <span :class="[row.deckCard.quantity === row.deckCard.quantityAcquired ? 'opacity-20' : '']">{{
-            row.cachedCard?.raw.name ?? 'Unknown card'
-          }}</span>
-          <i v-show="row.deckCard.quantity === row.deckCard.quantityAcquired" class="pi pi-check"></i>
+            <img
+              class="rounded w-12"
+              :class="[row.deckCard.quantity === row.deckCard.quantityAcquired ? 'opacity-20' : '']"
+              :src="determineImageUri(row.cachedCard?.raw)" />
+            <span :class="[row.deckCard.quantity === row.deckCard.quantityAcquired ? 'opacity-20' : '']">{{
+              row.cachedCard?.raw.name ?? 'Unknown card'
+            }}</span>
+            <i v-show="row.deckCard.quantity === row.deckCard.quantityAcquired" class="pi pi-check"></i>
+          </div>
+          <div>
+            <slot :deckCard="row.deckCard" name="cardActions"></slot>
+          </div>
         </li>
       </ul>
 
@@ -49,10 +54,8 @@
 import { db, type CachedCard, type CardType, type DeckCard } from '@/db';
 import { determineImageUri } from '@/service';
 import { determineCardType } from '@/util/cards-util';
-import { from, useObservable } from '@vueuse/rxjs';
-import { liveQuery } from 'dexie';
 import { Checkbox, InputText } from 'primevue';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 interface DeckRow {
   deckCard: DeckCard;
@@ -60,7 +63,7 @@ interface DeckRow {
 }
 
 const props = defineProps<{
-  deckId: string;
+  deckCards: DeckCard[] | undefined;
   sourceId?: string;
   singleColumn?: boolean;
   filter?: boolean;
@@ -68,40 +71,44 @@ const props = defineProps<{
   showUnassigned?: boolean;
 }>();
 
+const emits = defineEmits<{ rowClick: [deckCard: DeckCard] }>();
+
 const modelValue = defineModel<string[]>({ default: [] });
 const filterValue = ref('');
 
-const deckRows = useObservable<DeckRow[]>(
-  from(
-    liveQuery(async () => {
-      if (!props.deckId) {
-        return [];
-      }
+const deckRows = ref<DeckRow[] | undefined>();
 
-      let deckCards;
+watch(
+  () => props.deckCards,
+  async (newValue) => {
+    if (!newValue) {
+      deckRows.value = [];
+      return;
+    }
 
-      if (props.sourceId) {
-        deckCards = await db.deckCards.where({ deckId: props.deckId, sourceId: props.sourceId }).toArray();
-      } else if (props.showUnassigned) {
-        deckCards = (await db.deckCards.where('deckId').equals(props.deckId).toArray()).filter((deckCard) => !deckCard.sourceId);
-      } else {
-        deckCards = await db.deckCards.where('deckId').equals(props.deckId).toArray();
-      }
+    let filteredDeckCards = newValue;
 
-      if (!deckCards.length) {
-        return [];
-      }
+    if (props.sourceId) {
+      filteredDeckCards = newValue?.filter((dc) => dc.sourceId === props.sourceId);
+    } else if (props.showUnassigned) {
+      filteredDeckCards = newValue?.filter((dc) => !dc.sourceId);
+    }
 
-      const oracleIds = [...new Set(deckCards.map((card) => card.oracleId))];
-      const cachedCards = await db.cards.where('oracleId').anyOf(oracleIds).toArray();
-      const cachedCardsByOracleId = new Map<string, CachedCard>(cachedCards.map((card) => [card.oracleId, card]));
+    if (!filteredDeckCards || !filteredDeckCards.length) {
+      deckRows.value = [];
+      return;
+    }
 
-      return deckCards.map((deckCard) => ({
-        deckCard,
-        cachedCard: cachedCardsByOracleId.get(deckCard.oracleId) ?? null
-      }));
-    })
-  )
+    const oracleIds = [...new Set(filteredDeckCards.map((card) => card.oracleId))];
+    const cachedCards = await db.cards.where('oracleId').anyOf(oracleIds).toArray();
+    const cachedCardsByOracleId = new Map<string, CachedCard>(cachedCards.map((card) => [card.oracleId, card]));
+
+    deckRows.value = filteredDeckCards.map((deckCard) => ({
+      deckCard,
+      cachedCard: cachedCardsByOracleId.get(deckCard.oracleId) ?? null
+    }));
+  },
+  { immediate: true }
 );
 
 const organizedDeckRows = computed(() => {
@@ -147,11 +154,11 @@ function toggleSelection(deckCardId: string) {
   modelValue.value = [...current];
 }
 
-function handleRowClick(deckCardId: string) {
+function handleRowClick(deckCard: DeckCard) {
+  emits('rowClick', deckCard);
   if (!props.select) {
     return;
   }
-
-  toggleSelection(deckCardId);
+  if (props.select) toggleSelection(deckCard.id);
 }
 </script>
