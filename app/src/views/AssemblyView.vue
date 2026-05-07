@@ -5,7 +5,10 @@
         <i class="pi pi-chevron-left"></i>
         <div class="text-xl font-semibold mb-1">{{ deck?.name }}</div>
       </RouterLink>
-      <Button label="Import" size="small" severity="success" @click="handleShowDeckImport" />
+      <div class="flex items-center gap-2">
+        <Button label="Export" severity="info" size="small" @click="handleShowDeckExport" />
+        <Button label="Import" size="small" severity="success" @click="handleShowDeckImport" />
+      </div>
     </div>
     <Tabs v-model:value="tabValue">
       <TabList class="dark:bg-inherit!">
@@ -102,18 +105,25 @@
 
   <Dialog v-model:visible="showDeckImport" class="w-11/12 sm:w-4/12" header="Import Deck" modal>
     <div class="flex w-full">
-      <Textarea v-model:model-value="importDeckText" class="w-full" rows="15" style="resize: none" placeholder="Paste your decklist here." />
+      <Textarea v-model:model-value="deckText" class="w-full" rows="15" style="resize: none" placeholder="Paste your decklist here." />
     </div>
 
     <template #footer>
       <Button label="Import & Replace" severity="success" @click="handleImportAndReplace" :loading="isImportLoading" />
     </template>
   </Dialog>
+
+  <Dialog v-model:visible="showDeckExport" class="w-11/12 sm:w-4/12" header="Export Deck" modal>
+    <div class="flex w-full relative">
+      <Textarea v-model:model-value="deckText" class="w-full" rows="15" style="resize: none" readonly />
+      <Button class="absolute! right-2 top-2" text icon="pi pi-copy" @click="copyDeckToClipboard" />
+    </div>
+  </Dialog>
 </template>
 
 <script setup lang="ts">
 import DeckDisplay from '@/components/DeckDisplay.vue';
-import { db, type DeckCard } from '@/db';
+import { db, type CachedCard, type DeckCard } from '@/db';
 import { assignCardsToSource, bulkAddCardsToDeck, bulkRemoveCardsFromDeck, createSource, setCardQuantityAcquired } from '@/service';
 import { parseDeckToOracleIds } from '@/util/deck-import';
 import { Form, type FormSubmitEvent } from '@primevue/forms';
@@ -133,9 +143,10 @@ const tabValue = ref(useRoute().name === 'deck' ? 'deck' : 'sources');
 const showSourceCreateForm = ref(false);
 const showSourceSelect = ref(false);
 const showDeckImport = ref(false);
+const showDeckExport = ref(false);
 const selectedIds = ref<string[]>([]);
 const selectedSourceId = ref();
-const importDeckText = ref('');
+const deckText = ref('');
 const isImportLoading = ref(false);
 
 const toast = useToast();
@@ -192,7 +203,39 @@ function handleShowSourceDialog(sourceId: string) {
 
 function handleShowDeckImport() {
   showDeckImport.value = true;
-  importDeckText.value = '';
+  deckText.value = '';
+}
+
+async function handleShowDeckExport() {
+  showDeckExport.value = true;
+
+  const oracleIds = [...new Set(deckCards.value?.filter((card) => card.oracleId !== deck.value?.commanderOracleId).map((card) => card.oracleId))];
+  const cachedCards = await db.cards.where('oracleId').anyOf(oracleIds).toArray();
+  const cachedCardsByOracleId = new Map<string, CachedCard>(cachedCards.map((card) => [card.oracleId, card]));
+
+  const deckRows = deckCards.value
+    ?.filter((card) => card.oracleId !== deck.value?.commanderOracleId)
+    .map((deckCard) => ({
+      deckCard,
+      cachedCard: cachedCardsByOracleId.get(deckCard.oracleId) ?? null
+    }));
+
+  if (!deckRows) return;
+
+  console.log(deckRows);
+  deckRows.sort((a, b) => a.cachedCard!.raw.name.toLowerCase().localeCompare(b.cachedCard!.raw.name.toLowerCase()));
+
+  deckText.value = deckRows
+    .map((row) => ({
+      name: row.cachedCard?.raw.name,
+      quantity: row.deckCard.quantity
+    }))
+    .sort((a, b) => a.name!.toLowerCase().localeCompare(b.name!.toLowerCase()))
+    .map((row) => `${row.quantity} ${row.name}`)
+    .join('\n');
+
+  const cachedCommander = await db.cards.get(deck.value!.commanderOracleId);
+  deckText.value = [deckText.value, '\n\n', `1 ${cachedCommander?.raw.name}`].join('');
 }
 
 async function handleAddCardsToSource() {
@@ -208,7 +251,7 @@ async function handleImportAndReplace() {
 
     isImportLoading.value = true;
 
-    const parsedDeck = await parseDeckToOracleIds(importDeckText.value);
+    const parsedDeck = await parseDeckToOracleIds(deckText.value);
     const existingDeckCards = deckCards.value ?? [];
     const cardsToRemove = existingDeckCards.filter((deckCard) => !parsedDeck.some((card) => card.oracleId === deckCard.oracleId));
     const cardsToAdd = parsedDeck.filter((card) => !existingDeckCards.some((deckCard) => deckCard.oracleId === card.oracleId));
@@ -260,5 +303,19 @@ async function handleRemoveDeckCardFromSource(deckCard: DeckCard) {
 async function checkIsEntireSourceReceived(sourceId: string) {
   const deckCards = await db.deckCards.where('sourceId').equals(sourceId).toArray();
   return deckCards.every((card) => card.quantity === card.quantityAcquired);
+}
+
+async function copyDeckToClipboard() {
+  if (!deckText.value) return;
+
+  const text = deckText.value;
+
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.add({ summary: 'Copied deck to clipboard.', life: 3000, severity: 'success' });
+  } catch (e) {
+    toast.add({ summary: 'Failed to copy deck', life: 3000, severity: 'error' });
+    console.error(e);
+  }
 }
 </script>
