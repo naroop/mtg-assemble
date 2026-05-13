@@ -27,7 +27,7 @@
         </TabPanel>
 
         <!-- SOURCES -->
-        <TabPanel class="flex flex-col sm:flex-row gap-4 sm:h-[calc(100vh-11rem)] p-4 overflow-y-scroll" value="sources">
+        <TabPanel class="flex flex-col sm:flex-row gap-4 sm:h-[calc(100vh-11rem)] p-4 overflow-y-auto" value="sources">
           <Card
             class="w-full sm:min-w-md h-fit sm:w-fit"
             v-for="source in sources?.sort((a, b) => {

@@ -7,9 +7,10 @@
       )"
       :key="section.type"
       class="break-inside-avoid pb-6 mb-4">
-      <h1 class="text-muted-color font-semibold pb-3">
-        {{ section.type.toUpperCase() }}
-      </h1>
+      <div class="flex items-center gap-2 text-muted-color font-semibold pb-3">
+        <div>{{ section.type.toUpperCase() }}</div>
+        <span class="font-light text-sm">({{ section.rows.length }})</span>
+      </div>
 
       <ul v-if="section.rows?.length" class="flex flex-col" :class="[select ? 'gap-0.5' : 'gap-3']">
         <li
