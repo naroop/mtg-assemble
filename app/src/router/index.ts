@@ -12,29 +12,34 @@ const router = createRouter({
         {
           path: 'decks',
           name: 'decks',
-          component: () => import('@/views/DecksView.vue')
+          component: () => import('@/views/DecksView.vue'),
+          meta: { depth: 0 }
         },
         {
           path: 'decks/:id/list',
           name: 'deck',
           component: () => import('@/views/AssemblyView.vue'),
-          props: true
+          props: true,
+          meta: { depth: 1, group: 'assembly' }
         },
         {
           path: 'decks/:id/sources',
           name: 'deckSources',
           component: () => import('@/views/AssemblyView.vue'),
-          props: true
+          props: true,
+          meta: { depth: 1, group: 'assembly' }
         },
         {
           path: 'decks/import',
           name: 'importDeck',
-          component: () => import('@/views/ImportDeckView.vue')
+          component: () => import('@/views/ImportDeckView.vue'),
+          meta: { depth: 0 }
         },
         {
           path: 'dev',
           name: 'dev',
-          component: () => import('@/views/DevView.vue')
+          component: () => import('@/views/DevView.vue'),
+          meta: { depth: 0 }
         }
       ]
     }

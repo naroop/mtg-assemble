@@ -1,13 +1,23 @@
 <template>
+  <div class="fixed inset-x-0 top-0 z-10 h-20 bg-linear-to-b from-surface-950/90 via-surface-900/90 via-70% to-transparent pointer-events-none"></div>
+
   <div class="lg:px-28 2xl:px-64">
-    <div>
-      <div class="flex items-center w-full sticky top-0 p-1">
-        <Button size="large" icon="pi pi-bars" text @click="visible = true" />
-        <span class="text-primary font-semibold text-lg ml-2">MTG Assemble</span>
+    <div class="sticky flex items-center w-full top-0 z-20 p-1 pt-2 pb-4">
+      <Button class="sm:hidden!" size="large" icon="pi pi-bars" text @click="visible = true" />
+      <span class="text-primary font-semibold text-lg font-mono ml-2">MTG Assemble</span>
+      <div class="hidden sm:flex items-center ml-8 gap-5">
+        <Button as="RouterLink" to="/decks" active-class="font-bold" text severity="contrast">My Decks</Button>
+        <Button as="RouterLink" to="/decks/import" active-class="font-bold" text severity="contrast">Import</Button>
       </div>
     </div>
 
-    <RouterView />
+    <RouterView v-slot="{ Component, route }">
+      <Transition :name="transitionName" mode="out-in">
+        <div :key="route.path">
+          <component :is="Component" />
+        </div>
+      </Transition>
+    </RouterView>
 
     <Drawer v-model:visible="visible" pt:header="p-2!">
       <h1 class="text-muted-color font-semibold py-4">Decks</h1>
@@ -33,6 +43,7 @@
 </template>
 
 <script setup lang="ts">
+import { transitionName } from '@/router/transition';
 import { Button, Drawer } from 'primevue';
 import { ref } from 'vue';
 

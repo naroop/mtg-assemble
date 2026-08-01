@@ -32,7 +32,7 @@
               @click.stop />
 
             <img
-              class="rounded w-12"
+              class="rounded w-12 h-9 object-cover object-top"
               :class="[row.deckCard.quantity === row.deckCard.quantityAcquired ? 'opacity-20' : '']"
               :src="determineImageUri(row.cachedCard?.raw)" />
             <span :class="[row.deckCard.quantity === row.deckCard.quantityAcquired ? 'opacity-20' : '']">{{

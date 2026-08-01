@@ -1,13 +1,14 @@
 <template>
   <div>
-    <div class="flex items-center justify-between mx-2 mr-4">
+    <div class="flex flex-wrap items-center justify-between mx-2 mr-4 gap-2">
       <RouterLink :to="{ name: 'home' }" class="flex items-center gap-2 w-fit p-2 hover:opacity-50 transition-opacity">
         <i class="pi pi-chevron-left"></i>
         <div class="text-xl font-semibold mb-1">{{ deck?.name }}</div>
       </RouterLink>
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 w-full sm:w-auto">
         <Button label="Export" severity="info" size="small" @click="handleShowDeckExport" />
         <Button label="Import" size="small" severity="success" @click="handleShowDeckImport" />
+        <Button label="Delete" size="small" severity="danger" @click="handleDelete" />
       </div>
     </div>
     <Tabs v-model:value="tabValue">
@@ -124,7 +125,8 @@
 <script setup lang="ts">
 import DeckDisplay from '@/components/DeckDisplay.vue';
 import { db, type CachedCard, type DeckCard } from '@/db';
-import { assignCardsToSource, bulkAddCardsToDeck, bulkRemoveCardsFromDeck, createSource, setCardQuantityAcquired } from '@/service';
+import router from '@/router';
+import { assignCardsToSource, bulkAddCardsToDeck, bulkRemoveCardsFromDeck, createSource, deleteDeck, setCardQuantityAcquired } from '@/service';
 import { parseDeckToOracleIds } from '@/util/deck-import';
 import { Form, type FormSubmitEvent } from '@primevue/forms';
 import { zodResolver } from '@primevue/forms/resolvers/zod';
@@ -236,6 +238,22 @@ async function handleShowDeckExport() {
 
   const cachedCommander = await db.cards.get(deck.value!.commanderOracleId);
   deckText.value = [deckText.value, '\n\n', `1 ${cachedCommander?.raw.name}`].join('');
+}
+
+async function handleDelete() {
+  if (!deck.value) {
+    toast.add({ summary: 'Delete Failed', detail: 'No deck found to delete.', severity: 'error', life: 3000 });
+    return;
+  }
+
+  try {
+    await deleteDeck({ deckId: deck.value.id });
+    toast.add({ summary: 'Deck Deleted', detail: `"${deck.value.name}" has been deleted.`, severity: 'success', life: 3000 });
+    router.push({ name: 'decks' });
+  } catch (error) {
+    console.error(error);
+    toast.add({ summary: 'Delete Failed', detail: 'An error occurred while deleting the deck.', severity: 'error', life: 3000 });
+  }
 }
 
 async function handleAddCardsToSource() {

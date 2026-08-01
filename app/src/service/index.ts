@@ -21,6 +21,11 @@ export async function applyEvent(event: AppEvent): Promise<void> {
       });
       return;
 
+    case 'deck_deleted':
+      await db.deckCards.where('deckId').equals(event.payload.deckId).delete();
+      await db.decks.delete(event.payload.deckId);
+      return;
+
     case 'source_created':
       await db.sources.put({
         id: event.aggregateId,
@@ -136,6 +141,20 @@ export async function createDeck(input: { deckName: string; commanderOracleId: s
   });
 
   return deckId;
+}
+
+export async function deleteDeck(input: { deckId: string }) {
+  const now = nowIso();
+
+  appendEvent({
+    eventId: createId(),
+    type: 'deck_deleted',
+    aggregateId: '',
+    payload: { deckId: input.deckId },
+    createdAt: now,
+    source: 'local',
+    syncStatus: 'pending'
+  });
 }
 
 export async function createSource(input: { deckId: string; sourceName: string }) {

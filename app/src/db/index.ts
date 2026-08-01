@@ -56,6 +56,9 @@ export interface EventPayloadMap {
     commanderOracleId: string;
     commanderImageUri: string;
   };
+  deck_deleted: {
+    deckId: string;
+  };
   source_created: {
     name: string;
     deckId: string;

@@ -1,2 +1,31 @@
 @import 'tailwindcss';
 @import 'tailwindcss-primeui';
+
+.slide-left-enter-active,
+.slide-left-leave-active,
+.slide-right-enter-active,
+.slide-right-leave-active {
+  transition:
+    transform 0.25s ease,
+    opacity 0.25s ease;
+}
+
+/* forward/deeper navigation: new content enters from the right, old content exits to the left */
+.slide-left-enter-from {
+  transform: translateX(1.5rem);
+  opacity: 0;
+}
+.slide-left-leave-to {
+  transform: translateX(-1.5rem);
+  opacity: 0;
+}
+
+/* backward/shallower navigation: new content enters from the left, old content exits to the right */
+.slide-right-enter-from {
+  transform: translateX(-1.5rem);
+  opacity: 0;
+}
+.slide-right-leave-to {
+  transform: translateX(1.5rem);
+  opacity: 0;
+}

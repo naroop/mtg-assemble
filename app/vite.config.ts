@@ -14,5 +14,5 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
   },
-  base: '/mtg-assemble'
+  base: '/mtg-assemble/'
 });

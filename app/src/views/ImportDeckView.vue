@@ -1,7 +1,10 @@
 <template>
   <div>
     <Form v-slot="$form" :resolver :initial-values @submit="formSubmit" class="px-4 flex flex-col gap-4">
-      <h1 class="text-lg pt-2 pb-2 pl-1">Import from Text</h1>
+      <RouterLink :to="{ name: 'home' }" class="flex items-center gap-2 w-fit p-2 hover:opacity-50 transition-opacity">
+        <i class="pi pi-chevron-left"></i>
+        <div class="text-xl font-semibold mb-1">Import from Text</div>
+      </RouterLink>
       <div class="flex flex-col gap-1">
         <label for="deckName" class="ml-3 text-sm">Name</label>
         <InputText name="deckName" />
@@ -19,7 +22,7 @@
         <Textarea name="deck" rows="15" style="resize: none" />
         <Message v-if="$form.deck?.invalid" severity="error" size="small" variant="simple">{{ $form.deck.error?.message }}</Message>
       </div>
-      <Button type="submit" label="Import" />
+      <Button type="submit" label="Import" :loading="isLoading" />
     </Form>
   </div>
 </template>
@@ -35,6 +38,8 @@ import { createDeck } from '@/service';
 import CardSelect from '@/components/CardSelect.vue';
 
 const toast = useToast();
+
+const isLoading = ref(false);
 
 const initialValues = ref({
   deckName: '',
@@ -64,8 +69,10 @@ async function formSubmit(event: FormSubmitEvent) {
   if (event.valid) {
     const deckId = await createDeck({ deckName: event.values.deckName, commanderOracleId: event.values.commander.oracleId });
 
+    isLoading.value = true;
     await importDeck(deckId, event.values.deck);
     toast.add({ severity: 'success', summary: 'Deck Imported', detail: 'Your deck was successfully imported.', life: 3000 });
+    isLoading.value = false;
   }
 }
 </script>

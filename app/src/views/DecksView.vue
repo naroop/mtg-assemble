@@ -1,5 +1,5 @@
 <template>
-  <div class="px-2 pb-2 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+  <div class="px-2 pb-2 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
     <RouterLink
       v-for="deck in decks?.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))"
       :key="deck.id"
