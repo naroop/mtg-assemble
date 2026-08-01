@@ -1,5 +1,6 @@
 <template>
-  <div class="fixed inset-x-0 top-0 z-10 h-20 bg-linear-to-b from-surface-950/90 via-surface-900/90 via-70% to-transparent pointer-events-none"></div>
+  <div
+    class="fixed inset-x-0 top-0 z-10 h-14 bg-linear-to-b dark:from-surface-900/90 from-surface-100/90 from-90% to-transparent pointer-events-none"></div>
 
   <div class="lg:px-28 2xl:px-64">
     <div class="sticky flex items-center w-full top-0 z-20 p-1 pt-2 pb-4">
@@ -13,7 +14,7 @@
 
     <RouterView v-slot="{ Component, route }">
       <Transition :name="transitionName" mode="out-in">
-        <div :key="route.path">
+        <div :key="(route.meta.group as string | undefined) ?? route.path">
           <component :is="Component" />
         </div>
       </Transition>

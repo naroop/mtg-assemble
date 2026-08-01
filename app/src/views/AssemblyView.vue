@@ -133,7 +133,7 @@ import { zodResolver } from '@primevue/forms/resolvers/zod';
 import { from, useObservable } from '@vueuse/rxjs';
 import { liveQuery } from 'dexie';
 import { Button, Card, Dialog, InputText, Message, Tab, TabList, TabPanel, TabPanels, Tabs, Textarea, useToast } from 'primevue';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import z from 'zod';
 
@@ -141,7 +141,15 @@ const props = defineProps<{
   id: string;
 }>();
 
-const tabValue = ref(useRoute().name === 'deck' ? 'deck' : 'sources');
+const route = useRoute();
+const tabValue = ref(route.name === 'deck' ? 'deck' : 'sources');
+
+watch(
+  () => route.name,
+  (name) => {
+    tabValue.value = name === 'deck' ? 'deck' : 'sources';
+  }
+);
 const showSourceCreateForm = ref(false);
 const showSourceSelect = ref(false);
 const showDeckImport = ref(false);
