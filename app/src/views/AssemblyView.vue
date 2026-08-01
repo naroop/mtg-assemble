@@ -232,7 +232,6 @@ async function handleShowDeckExport() {
 
   if (!deckRows) return;
 
-  console.log(deckRows);
   deckRows.sort((a, b) => a.cachedCard!.raw.name.toLowerCase().localeCompare(b.cachedCard!.raw.name.toLowerCase()));
 
   deckText.value = deckRows

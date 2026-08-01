@@ -6,6 +6,10 @@ const TYPE_MAP: CardType[] = ['creature', 'sorcery', 'artifact', 'instant', 'enc
 export function determineCardType(card: Card): CardType {
   const typeLine = card.type_line.toLowerCase();
 
+  if (typeLine.includes('land')) {
+    return 'land';
+  }
+
   const type = TYPE_MAP.find((type) => typeLine.includes(type));
   return !type ? 'unknown' : type;
 }
