@@ -38,7 +38,10 @@
             <template #title>
               <div class="flex justify-between items-center">
                 {{ source.name }}
-                <Button v-tooltip="'Mark as Received'" icon="pi pi-envelope" text @click="handleMarkReceived(source.id)" />
+                <div class="flex items-center gap-2">
+                  <Button v-tooltip="'Delete Source'" icon="pi pi-trash" text severity="danger" @click="handleDeleteSource(source.id)" />
+                  <Button v-tooltip="'Mark as Received'" icon="pi pi-envelope" text @click="handleMarkReceived(source.id)" />
+                </div>
               </div>
             </template>
             <template #content>
@@ -126,7 +129,15 @@
 import DeckDisplay from '@/components/DeckDisplay.vue';
 import { db, type CachedCard, type DeckCard } from '@/db';
 import router from '@/router';
-import { assignCardsToSource, bulkAddCardsToDeck, bulkRemoveCardsFromDeck, createSource, deleteDeck, setCardQuantityAcquired } from '@/service';
+import {
+  assignCardsToSource,
+  bulkAddCardsToDeck,
+  bulkRemoveCardsFromDeck,
+  createSource,
+  deleteDeck,
+  deleteSource,
+  setCardQuantityAcquired
+} from '@/service';
 import { parseDeckToOracleIds } from '@/util/deck-import';
 import { Form, type FormSubmitEvent } from '@primevue/forms';
 import { zodResolver } from '@primevue/forms/resolvers/zod';
@@ -266,6 +277,11 @@ async function handleDelete() {
 async function handleAddCardsToSource() {
   await assignCardsToSource({ sourceId: selectedSourceId.value, deckCardIds: selectedIds.value });
   showSourceSelect.value = false;
+}
+
+async function handleDeleteSource(sourceId: string) {
+  await deleteSource({ sourceId });
+  toast.add({ summary: 'Source Deleted', detail: 'The source has been deleted.', severity: 'success', life: 3000 });
 }
 
 async function handleImportAndReplace() {

@@ -63,6 +63,9 @@ export interface EventPayloadMap {
     name: string;
     deckId: string;
   };
+  source_deleted: {
+    sourceId: string;
+  };
   deck_card_bulk_assigned_to_source: {
     sourceId: string;
     deckCardIds: Array<string>;

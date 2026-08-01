@@ -36,6 +36,11 @@ export async function applyEvent(event: AppEvent): Promise<void> {
       });
       return;
 
+    case 'source_deleted':
+      await db.deckCards.where('sourceId').equals(event.payload.sourceId).modify({ sourceId: '', updatedAt: event.createdAt });
+      await db.sources.delete(event.payload.sourceId);
+      return;
+
     case 'deck_card_added':
       await db.deckCards.put({
         id: event.aggregateId,
@@ -172,6 +177,20 @@ export async function createSource(input: { deckId: string; sourceName: string }
   });
 
   return sourceId;
+}
+
+export async function deleteSource(input: { sourceId: string }) {
+  const now = nowIso();
+
+  appendEvent({
+    eventId: createId(),
+    type: 'source_deleted',
+    aggregateId: '',
+    payload: { sourceId: input.sourceId },
+    createdAt: now,
+    source: 'local',
+    syncStatus: 'pending'
+  });
 }
 
 export async function assignCardsToSource(input: { sourceId: string; deckCardIds: string[] }) {
