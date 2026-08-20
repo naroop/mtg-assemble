@@ -35,12 +35,17 @@
               class="rounded w-12 h-9 object-cover object-top"
               :class="[row.deckCard.quantity === row.deckCard.quantityAcquired ? 'opacity-20' : '']"
               :src="determineImageUri(row.cachedCard?.raw)" />
+
             <span :class="[row.deckCard.quantity === row.deckCard.quantityAcquired ? 'opacity-20' : '']">{{
               row.cachedCard?.raw.name ?? 'Unknown card'
             }}</span>
+
             <i v-show="row.deckCard.quantity === row.deckCard.quantityAcquired" class="pi pi-check"></i>
           </div>
-          <div>
+          <div class="flex items-center gap-2">
+            <div v-show="row.deckCard.quantity > 1" class="rounded text-sm font-mono">
+              {{ row.deckCard.quantityAcquired }} / {{ row.deckCard.quantity }}
+            </div>
             <slot :deckCard="row.deckCard" name="cardActions"></slot>
           </div>
         </li>
