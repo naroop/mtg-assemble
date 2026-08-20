@@ -1,12 +1,13 @@
 <template>
   <InputText v-show="filter" v-model="filterValue" class="mb-5!" />
-  <div class="columns-1 gap-4" :class="[!singleColumn ? 'sm:columns-2 lg:columns-3' : '']">
+  <div class="columns-1 gap-4 pt-2" :class="[!singleColumn ? 'sm:columns-2 lg:columns-3' : '']">
     <div
       v-for="section in organizedDeckRows.filter(
         (section) => section.rows.filter((row) => row.cachedCard?.raw.name.toLowerCase().includes(filterValue.toLowerCase())).length > 0
       )"
       :key="section.type"
-      class="break-inside-avoid pb-6 mb-4">
+      class="pb-6 mb-4"
+      :class="[section.rows.length <= breakAvoidThreshold ? 'break-inside-avoid' : '']">
       <div class="flex items-center gap-2 text-muted-color font-semibold pb-3">
         <div>{{ section.type.toUpperCase() }}</div>
         <span class="font-light text-sm">({{ section.rows.length }})</span>
@@ -14,7 +15,7 @@
 
       <ul v-if="section.rows?.length" class="flex flex-col" :class="[select ? 'gap-0.5' : 'gap-3']">
         <li
-          v-for="row in section.rows.filter((row) => row.cachedCard?.raw.name.toLowerCase().includes(filterValue.toLowerCase()))"
+          v-for="(row, i) in section.rows.filter((row) => row.cachedCard?.raw.name.toLowerCase().includes(filterValue.toLowerCase()))"
           :key="row.deckCard.id"
           class="rounded transition flex justify-between"
           :class="[
@@ -81,6 +82,11 @@ const emits = defineEmits<{ rowClick: [deckCard: DeckCard] }>();
 
 const modelValue = defineModel<string[]>({ default: [] });
 const filterValue = ref('');
+
+// Sections with more rows than this will be allowed to break across columns instead of
+// being kept together, so one large section (e.g. creatures) doesn't force everything
+// else into an unbalanced single column.
+const breakAvoidThreshold = 15;
 
 const deckRows = ref<DeckRow[] | undefined>();
 
