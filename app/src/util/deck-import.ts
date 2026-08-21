@@ -1,6 +1,5 @@
-import { bulkAddCardsToDeck, determineImageUri } from '@/service';
+import { bulkAddCardsToDeck } from '@/service/deckCardService';
 import { CardIdentifierBuilder, Cards, type Card as ScryfallCard } from 'scryfall-api';
-import { determineCardType } from './cards-util';
 
 function normalizeCardName(name: string): string {
   return name.replace(/\s*\/\s*/g, ' // ');

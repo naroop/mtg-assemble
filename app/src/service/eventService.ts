@@ -26,6 +26,12 @@ export async function applyEvent(event: AppEvent): Promise<void> {
       return;
 
     case 'source_created':
+      if (!(await db.decks.get(event.payload.deckId))) {
+        // The deck may have already been deleted by another event (e.g. a
+        // concurrent deletion that synced first). Nothing to create the source for.
+        return;
+      }
+
       await db.sources.put({
         id: event.aggregateId,
         name: event.payload.name,
@@ -41,6 +47,12 @@ export async function applyEvent(event: AppEvent): Promise<void> {
       return;
 
     case 'deck_card_added':
+      if (!(await db.decks.get(event.payload.deckId))) {
+        // The deck may have already been deleted by another event (e.g. a
+        // concurrent deletion that synced first). Nothing to add it to.
+        return;
+      }
+
       await db.deckCards.put({
         id: event.aggregateId,
         deckId: event.payload.deckId,
@@ -54,6 +66,12 @@ export async function applyEvent(event: AppEvent): Promise<void> {
       return;
 
     case 'deck_card_bulk_added':
+      if (!(await db.decks.get(event.payload.deckId))) {
+        // The deck may have already been deleted by another event (e.g. a
+        // concurrent deletion that synced first). Nothing to add these to.
+        return;
+      }
+
       db.deckCards.bulkPut(
         event.payload.cards.map((card) => ({
           id: card.id,
@@ -75,7 +93,9 @@ export async function applyEvent(event: AppEvent): Promise<void> {
       const existingQtySet = await db.deckCards.get(event.aggregateId);
 
       if (!existingQtySet) {
-        throw new Error(`Deck card ${event.aggregateId} not found while applying quantity event`);
+        // The deck card may have already been deleted by another event (e.g. a
+        // concurrent removal that synced first). Nothing to update in that case.
+        return;
       }
 
       if (event.payload.quantity <= 0) {
@@ -103,7 +123,9 @@ export async function applyEvent(event: AppEvent): Promise<void> {
       const existingQtyAcquired = await db.deckCards.get(event.aggregateId);
 
       if (!existingQtyAcquired) {
-        throw new Error(`Deck card ${event.aggregateId} not found while applying quantity acquired event`);
+        // The deck card may have already been deleted by another event (e.g. a
+        // concurrent removal that synced first). Nothing to update in that case.
+        return;
       }
 
       if (event.payload.quantity > existingQtyAcquired.quantity) {
@@ -122,7 +144,28 @@ export async function applyEvent(event: AppEvent): Promise<void> {
 export async function rebuildProjections() {
   await Promise.allSettled([db.decks.clear(), db.deckCards.clear(), db.sources.clear()]);
 
+  // Replay in server sync order rather than local insertion order, since a
+  // client's local event ids don't necessarily reflect the true order events
+  // were synced to (and applied against) the server. Events not yet synced
+  // (no serverSequence) are assumed to be the most recent and are replayed
+  // last, in their local order.
   const events = await db.events.orderBy('id').toArray();
+
+  events.sort((a, b) => {
+    if (a.serverSequence !== undefined && b.serverSequence !== undefined) {
+      return a.serverSequence - b.serverSequence;
+    }
+
+    if (a.serverSequence !== undefined) {
+      return -1;
+    }
+
+    if (b.serverSequence !== undefined) {
+      return 1;
+    }
+
+    return (a.id ?? 0) - (b.id ?? 0);
+  });
 
   for (const event of events) {
     await applyEvent(event);

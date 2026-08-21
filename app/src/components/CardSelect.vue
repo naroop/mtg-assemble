@@ -23,7 +23,7 @@
 </template>
 
 <script setup lang="ts">
-import { determineImageUri } from '@/service';
+import { determineImageUri } from '@/util/cards-util';
 import { Select, type SelectFilterEvent } from 'primevue';
 import { Cards } from 'scryfall-api';
 import { ref, useAttrs, useSlots } from 'vue';

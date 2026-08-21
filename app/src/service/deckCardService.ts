@@ -61,7 +61,7 @@ export async function bulkRemoveCardsFromDeck(input: { deckCardIds: string[] }) 
   });
 }
 
-async function ensureCardsCached(oracleIds: string[]) {
+export async function ensureCardsCached(oracleIds: string[]) {
   const uniqueOracleIds = [...new Set(oracleIds.filter(Boolean))];
 
   if (!uniqueOracleIds.length) return;

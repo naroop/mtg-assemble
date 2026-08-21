@@ -12,7 +12,7 @@
       </div>
 
       <div class="flex items-center gap-2 ml-auto mr-2">
-        <Button text icon="pi pi-sync" />
+        <Button text icon="pi pi-sync" @click="handleClickSync" />
         <Button text icon="pi pi-user" @click="handleClickUser" />
       </div>
     </div>
@@ -78,6 +78,7 @@
 <script setup lang="ts">
 import { useAuth } from '@/composables/useAuth';
 import { transitionName } from '@/router/transition';
+import { syncEvents } from '@/service/syncService';
 import { Form, type FormSubmitEvent } from '@primevue/forms';
 import { zodResolver } from '@primevue/forms/resolvers/zod';
 import { Button, Dialog, Drawer, InputText, Message, Password, Popover, useToast } from 'primevue';
@@ -94,6 +95,20 @@ const visible = ref(false);
 const signInVisible = ref(false);
 const isLoading = ref(false);
 const authAction = ref<'signIn' | 'signUp'>('signIn');
+
+const handleClickSync = async () => {
+  try {
+    await syncEvents();
+    toast.add({ severity: 'success', summary: 'Sync Complete', detail: 'Your decks and collection have been synced.', life: 3000 });
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Sync Failed',
+      detail: error instanceof Error ? error.message : 'Unable to sync decks and collection.',
+      life: 3000
+    });
+  }
+};
 
 const handleClickUser = (event: Event) => {
   if (user.value) {
