@@ -3,6 +3,37 @@ import { db, type AppEvent } from '@/db';
 import { supabase } from '@/util/supabase';
 import { applyEvent } from './eventService';
 import { ensureCardsCached } from './deckCardService';
+import { readonly, ref } from 'vue';
+
+const isSyncing = ref(false);
+const pendingChangesCount = ref(0);
+const isOnline = ref(navigator.onLine);
+
+window.addEventListener('online', () => {
+  isOnline.value = true;
+  syncEvents().catch(() => {});
+});
+
+window.addEventListener('offline', () => {
+  isOnline.value = false;
+});
+
+/** Whether a sync is currently in progress, regardless of what triggered it. */
+export const syncing = readonly(isSyncing);
+
+/** Whether the browser currently reports having a network connection. */
+export const online = readonly(isOnline);
+
+/**
+ * The number of local events that haven't been synced to the server yet.
+ * Only updated once a sync attempt completes, so this reflects "the last
+ * sync was unable to push everything" (e.g. the client is offline).
+ */
+export const pendingChanges = readonly(pendingChangesCount);
+
+async function refreshPendingChanges(): Promise<void> {
+  pendingChangesCount.value = await db.events.where('syncStatus').equals('pending').count();
+}
 
 interface EventRow {
   event_id: string;
@@ -165,12 +196,28 @@ export async function pullEvents(): Promise<number> {
 
 /**
  * Pushes pending local events, then pulls any new events from the server.
+ * No-ops (without hitting the network) if the browser reports being offline.
  */
-export async function syncEvents(): Promise<{ pushed: number; pulled: number }> {
-  const pushed = await pushEvents();
-  const pulled = await pullEvents();
+export async function syncEvents() {
+  if (!isOnline.value) {
+    await refreshPendingChanges();
+    return { pushed: 0, pulled: 0 };
+  }
 
-  await ensureCardsCached(await db.deckCards.toArray().then((deckCards) => deckCards.map((deckCard) => deckCard.oracleId)));
+  isSyncing.value = true;
 
-  return { pushed, pulled };
+  try {
+    const pushed = await pushEvents();
+    const pulled = await pullEvents();
+
+    await ensureCardsCached(await db.deckCards.toArray().then((deckCards) => deckCards.map((deckCard) => deckCard.oracleId)));
+
+    return { pushed, pulled };
+  } catch (error) {
+    console.warn('Unable to sync events:', error);
+    throw error;
+  } finally {
+    await refreshPendingChanges();
+    isSyncing.value = false;
+  }
 }

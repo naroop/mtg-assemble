@@ -73,7 +73,6 @@ export async function ensureCardsCached(oracleIds: string[]) {
   if (!missingOracleIds.length) return;
 
   const fetchedCards = await Cards.collection(...missingOracleIds.map((oracleId) => CardIdentifierBuilder.byOracleId(oracleId)));
-  console.log('Fetched Cards:', fetchedCards);
 
   const now = new Date().toISOString();
 

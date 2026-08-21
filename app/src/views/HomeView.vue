@@ -12,7 +12,10 @@
       </div>
 
       <div class="flex items-center gap-2 ml-auto mr-2">
-        <Button text icon="pi pi-sync" @click="handleClickSync" />
+        <div class="relative">
+          <Button text :icon="syncButtonIcon" :icon-class="syncing ? 'animate-spin' : ''" @click="handleClickSync" />
+          <Badge v-if="pendingChanges > 0" :value="pendingChanges" severity="warn" class="absolute -top-1 -right-1" size="small" />
+        </div>
         <Button text icon="pi pi-user" @click="handleClickUser" />
       </div>
     </div>
@@ -78,11 +81,11 @@
 <script setup lang="ts">
 import { useAuth } from '@/composables/useAuth';
 import { transitionName } from '@/router/transition';
-import { syncEvents } from '@/service/syncService';
+import { online, pendingChanges, syncEvents, syncing } from '@/service/syncService';
 import { Form, type FormSubmitEvent } from '@primevue/forms';
 import { zodResolver } from '@primevue/forms/resolvers/zod';
-import { Button, Dialog, Drawer, InputText, Message, Password, Popover, useToast } from 'primevue';
-import { ref, useTemplateRef } from 'vue';
+import { Badge, Button, Dialog, Drawer, InputText, Message, Password, Popover, useToast } from 'primevue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 import z from 'zod';
 
 const userPopover = useTemplateRef<InstanceType<typeof Popover>>('userPopover');
@@ -96,10 +99,34 @@ const signInVisible = ref(false);
 const isLoading = ref(false);
 const authAction = ref<'signIn' | 'signUp'>('signIn');
 
+const showSyncComplete = ref(false);
+const syncButtonIcon = computed(() => (showSyncComplete.value ? 'pi pi-check' : 'pi pi-sync'));
+
+let syncCompleteTimeout: ReturnType<typeof setTimeout> | undefined;
+
+watch(syncing, (isSyncing, wasSyncing) => {
+  if (wasSyncing && !isSyncing) {
+    clearTimeout(syncCompleteTimeout);
+    showSyncComplete.value = true;
+    syncCompleteTimeout = setTimeout(() => {
+      showSyncComplete.value = false;
+    }, 1500);
+  }
+});
+
 const handleClickSync = async () => {
+  if (!online.value) {
+    toast.add({
+      severity: 'warn',
+      summary: 'Offline',
+      detail: "We can't sync right now while you're offline.",
+      life: 3000
+    });
+    return;
+  }
+
   try {
     await syncEvents();
-    toast.add({ severity: 'success', summary: 'Sync Complete', detail: 'Your decks have been synced.', life: 3000 });
   } catch (error) {
     toast.add({
       severity: 'error',
@@ -166,6 +193,7 @@ async function formSubmit(event: FormSubmitEvent) {
     } else {
       await signIn(event.values.email, event.values.password);
       toast.add({ severity: 'success', summary: 'Signed In', detail: 'You have successfully signed in.', life: 3000 });
+      await syncEvents();
     }
     signInVisible.value = false;
   } catch (error) {
