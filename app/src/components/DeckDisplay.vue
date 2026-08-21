@@ -15,6 +15,7 @@
       <div class="flex items-center gap-2 text-muted-color font-semibold pb-3">
         <div>{{ section.type.toUpperCase() }}</div>
         <span class="font-light text-sm">({{ section.rows.length }})</span>
+        <span class="ml-auto text-sm mr-2">{{ formatUsd(sectionCost(section.rows)) }}</span>
       </div>
 
       <ul v-if="section.rows?.length" class="flex flex-col" :class="[select ? 'gap-0.5' : 'gap-3']">
@@ -41,11 +42,16 @@
               :class="[row.deckCard.quantity === row.deckCard.quantityAcquired ? 'opacity-20' : '']"
               :src="determineImageUri(row.cachedCard?.raw)" />
 
-            <span :class="[row.deckCard.quantity === row.deckCard.quantityAcquired ? 'opacity-20' : '']">
+            <span
+              :class="[
+                row.deckCard.quantity === row.deckCard.quantityAcquired ? 'opacity-20' : '',
+                !singleColumn && row.deckCard.quantity !== row.deckCard.quantityAcquired && row.deckCard.sourceId ? 'text-primary' : ''
+              ]">
               {{ row.cachedCard?.raw.name ?? 'Unknown card' }}
             </span>
 
-            <i v-show="row.deckCard.quantity === row.deckCard.quantityAcquired" class="pi pi-check"></i>
+            <i v-if="row.deckCard.quantity === row.deckCard.quantityAcquired" class="pi pi-check"></i>
+            <i v-else-if="!singleColumn && row.deckCard.sourceId" class="pi pi-shopping-cart text-primary"></i>
           </div>
           <div class="flex items-center gap-2">
             <div v-show="row.deckCard.quantity > 1" class="rounded text-sm font-mono">
@@ -106,6 +112,10 @@ const unownedCost = computed(() => {
     ) ?? 0
   );
 });
+
+function sectionCost(rows: DeckRow[]): number {
+  return rows.reduce((total, row) => total + (Number(row.cachedCard?.raw.prices['usd']) ?? 0) * row.deckCard.quantity, 0);
+}
 
 watch(
   () => props.deckCards,
