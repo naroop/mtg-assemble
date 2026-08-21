@@ -59,8 +59,7 @@
 
 <script setup lang="ts">
 import { db, type CachedCard, type CardType, type DeckCard } from '@/db';
-import { determineImageUri } from '@/service';
-import { determineCardType } from '@/util/cards-util';
+import { determineCardType, determineImageUri } from '@/util/cards-util';
 import { Checkbox, InputText } from 'primevue';
 import { computed, ref, watch } from 'vue';
 

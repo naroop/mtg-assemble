@@ -83,7 +83,9 @@
 
 <script setup lang="ts">
 import { db } from '@/db';
-import { bulkAddCardsToDeck, createDeck, rebuildProjections } from '@/service';
+import { bulkAddCardsToDeck } from '@/service/deckCardService';
+import { createDeck } from '@/service/deckService';
+import { rebuildProjections } from '@/service/eventService';
 import { from, useObservable } from '@vueuse/rxjs';
 import { liveQuery } from 'dexie';
 import { Button, Tab, TabList, TabPanel, TabPanels, Tabs } from 'primevue';

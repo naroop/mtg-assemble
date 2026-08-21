@@ -34,8 +34,8 @@ import { ref } from 'vue';
 import { zodResolver } from '@primevue/forms/resolvers/zod';
 import z from 'zod';
 import importDeck from '@/util/deck-import';
-import { createDeck } from '@/service';
 import CardSelect from '@/components/CardSelect.vue';
+import { createDeck } from '@/service/deckService';
 
 const toast = useToast();
 

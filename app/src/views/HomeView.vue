@@ -11,7 +11,8 @@
         <Button as="RouterLink" to="/decks/import" active-class="font-bold" text severity="contrast">Import</Button>
       </div>
 
-      <div class="flex items-center gap-5 ml-auto mr-2">
+      <div class="flex items-center gap-2 ml-auto mr-2">
+        <Button text icon="pi pi-sync" />
         <Button text icon="pi pi-user" @click="handleClickUser" />
       </div>
     </div>

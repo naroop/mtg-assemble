@@ -129,15 +129,9 @@
 import DeckDisplay from '@/components/DeckDisplay.vue';
 import { db, type CachedCard, type DeckCard } from '@/db';
 import router from '@/router';
-import {
-  assignCardsToSource,
-  bulkAddCardsToDeck,
-  bulkRemoveCardsFromDeck,
-  createSource,
-  deleteDeck,
-  deleteSource,
-  setCardQuantityAcquired
-} from '@/service';
+import { assignCardsToSource, bulkAddCardsToDeck, bulkRemoveCardsFromDeck, setCardQuantityAcquired } from '@/service/deckCardService';
+import { deleteDeck } from '@/service/deckService';
+import { createSource, deleteSource } from '@/service/sourceService';
 import { parseDeckToOracleIds } from '@/util/deck-import';
 import { Form, type FormSubmitEvent } from '@primevue/forms';
 import { zodResolver } from '@primevue/forms/resolvers/zod';
