@@ -10,6 +10,10 @@
         <Button as="RouterLink" to="/decks" active-class="font-bold" text severity="contrast">My Decks</Button>
         <Button as="RouterLink" to="/decks/import" active-class="font-bold" text severity="contrast">Import</Button>
       </div>
+
+      <div class="flex items-center gap-5 ml-auto mr-2">
+        <Button text icon="pi pi-user" @click="handleClickUser" />
+      </div>
     </div>
 
     <RouterView v-slot="{ Component, route }">
@@ -41,12 +45,122 @@
       </div>
     </Drawer>
   </div>
+
+  <Popover ref="userPopover" class="w-3xs">
+    <div class="text-sm font-semibold pt-1 pb-2">{{ user?.email }}</div>
+    <div class="flex flex-col gap-2">
+      <Button text label="Sign Out" size="small" @click="handleSignOut" />
+    </div>
+  </Popover>
+
+  <Dialog modal v-model:visible="signInVisible" header="Sign In" class="w-md">
+    <p class="text-sm mb-5 italic">Make an account to sync your decks and collection across devices.</p>
+    <Form v-slot="$form" :resolver :initial-values @submit="formSubmit" class="flex flex-col gap-4">
+      <div class="flex flex-col gap-1">
+        <label for="email" class="ml-3 text-sm">Email</label>
+        <InputText name="email" type="email" />
+        <Message v-if="$form.email?.invalid" severity="error" size="small" variant="simple">{{ $form.email.error?.message }}</Message>
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label for="password" class="ml-3 text-sm">Password</label>
+        <Password name="password" :feedback="false" toggle-mask fluid />
+        <Message v-if="$form.password?.invalid" severity="error" size="small" variant="simple">{{ $form.password.error?.message }}</Message>
+      </div>
+
+      <Button type="submit" label="Login" :loading="isLoading && authAction === 'signIn'" @click="authAction = 'signIn'" />
+      <Button type="submit" label="Create Account" text size="small" :loading="isLoading && authAction === 'signUp'" @click="authAction = 'signUp'" />
+    </Form>
+  </Dialog>
 </template>
 
 <script setup lang="ts">
+import { useAuth } from '@/composables/useAuth';
 import { transitionName } from '@/router/transition';
-import { Button, Drawer } from 'primevue';
-import { ref } from 'vue';
+import { Form, type FormSubmitEvent } from '@primevue/forms';
+import { zodResolver } from '@primevue/forms/resolvers/zod';
+import { Button, Dialog, Drawer, InputText, Message, Password, Popover, useToast } from 'primevue';
+import { ref, useTemplateRef } from 'vue';
+import z from 'zod';
+
+const userPopover = useTemplateRef<InstanceType<typeof Popover>>('userPopover');
+
+const { user, signIn, signUp, signOut } = useAuth();
+const toast = useToast();
 
 const visible = ref(false);
+
+const signInVisible = ref(false);
+const isLoading = ref(false);
+const authAction = ref<'signIn' | 'signUp'>('signIn');
+
+const handleClickUser = (event: Event) => {
+  if (user.value) {
+    userPopover.value?.show(event);
+  } else {
+    signInVisible.value = true;
+  }
+};
+
+async function handleSignOut() {
+  try {
+    await signOut();
+    userPopover.value?.hide();
+    toast.add({ severity: 'success', summary: 'Signed Out', detail: 'You have been signed out.', life: 3000 });
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Sign Out Failed',
+      detail: error instanceof Error ? error.message : 'Unable to sign out.',
+      life: 3000
+    });
+  }
+}
+
+const initialValues = ref({
+  email: '',
+  password: ''
+});
+
+const resolver = ref(
+  zodResolver(
+    z.object({
+      email: z.string().min(1, { message: 'Email is required.' }).email({ message: 'Invalid email address.' }),
+      password: z.string().min(1, { message: 'Password is required.' })
+    })
+  )
+);
+
+async function formSubmit(event: FormSubmitEvent) {
+  if (!event.valid) {
+    return;
+  }
+
+  isLoading.value = true;
+
+  try {
+    if (authAction.value === 'signUp') {
+      await signUp(event.values.email, event.values.password);
+      toast.add({
+        severity: 'success',
+        summary: 'Account Created',
+        detail: 'Check your email to confirm your account.',
+        life: 5000
+      });
+    } else {
+      await signIn(event.values.email, event.values.password);
+      toast.add({ severity: 'success', summary: 'Signed In', detail: 'You have successfully signed in.', life: 3000 });
+    }
+    signInVisible.value = false;
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: authAction.value === 'signUp' ? 'Account Creation Failed' : 'Sign In Failed',
+      detail: error instanceof Error ? error.message : 'Unable to complete request.',
+      life: 3000
+    });
+  } finally {
+    isLoading.value = false;
+  }
+}
 </script>
