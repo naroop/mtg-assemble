@@ -1,5 +1,9 @@
 <template>
-  <InputText v-show="filter" v-model="filterValue" class="mb-5!" />
+  <InputText v-show="filter" v-model="filterValue" class="mb-3!" placeholder="Filter cards..." />
+  <div v-show="showDeckInfo" class="flex items-center gap-2">
+    <Message size="small">Total: {{ formatUsd(deckCost) }}</Message>
+    <Message size="small">Unowned: {{ formatUsd(unownedCost) }}</Message>
+  </div>
   <div class="columns-1 gap-4 pt-2" :class="[!singleColumn ? 'sm:columns-2 lg:columns-3' : '']">
     <div
       v-for="section in organizedDeckRows.filter(
@@ -15,7 +19,7 @@
 
       <ul v-if="section.rows?.length" class="flex flex-col" :class="[select ? 'gap-0.5' : 'gap-3']">
         <li
-          v-for="(row, i) in section.rows.filter((row) => row.cachedCard?.raw.name.toLowerCase().includes(filterValue.toLowerCase()))"
+          v-for="row in section.rows.filter((row) => row.cachedCard?.raw.name.toLowerCase().includes(filterValue.toLowerCase()))"
           :key="row.deckCard.id"
           class="rounded transition flex justify-between"
           :class="[
@@ -37,9 +41,9 @@
               :class="[row.deckCard.quantity === row.deckCard.quantityAcquired ? 'opacity-20' : '']"
               :src="determineImageUri(row.cachedCard?.raw)" />
 
-            <span :class="[row.deckCard.quantity === row.deckCard.quantityAcquired ? 'opacity-20' : '']">{{
-              row.cachedCard?.raw.name ?? 'Unknown card'
-            }}</span>
+            <span :class="[row.deckCard.quantity === row.deckCard.quantityAcquired ? 'opacity-20' : '']">
+              {{ row.cachedCard?.raw.name ?? 'Unknown card' }}
+            </span>
 
             <i v-show="row.deckCard.quantity === row.deckCard.quantityAcquired" class="pi pi-check"></i>
           </div>
@@ -59,8 +63,8 @@
 
 <script setup lang="ts">
 import { db, type CachedCard, type CardType, type DeckCard } from '@/db';
-import { determineCardType, determineImageUri } from '@/util/cards-util';
-import { Checkbox, InputText } from 'primevue';
+import { determineCardType, determineImageUri, formatUsd } from '@/util/cards-util';
+import { Checkbox, InputText, Message } from 'primevue';
 import { computed, ref, watch } from 'vue';
 
 interface DeckRow {
@@ -75,6 +79,7 @@ const props = defineProps<{
   filter?: boolean;
   select?: boolean;
   showUnassigned?: boolean;
+  showDeckInfo?: boolean;
 }>();
 
 const emits = defineEmits<{ rowClick: [deckCard: DeckCard] }>();
@@ -88,6 +93,19 @@ const filterValue = ref('');
 const breakAvoidThreshold = 15;
 
 const deckRows = ref<DeckRow[] | undefined>();
+
+const deckCost = computed(() => {
+  return deckRows.value?.reduce((total, row) => total + (Number(row.cachedCard?.raw.prices['usd']) ?? 0) * row.deckCard.quantity, 0) ?? 0;
+});
+
+const unownedCost = computed(() => {
+  return (
+    deckRows.value?.reduce(
+      (total, row) => total + (Number(row.cachedCard?.raw.prices['usd']) ?? 0) * (row.deckCard.quantity - row.deckCard.quantityAcquired),
+      0
+    ) ?? 0
+  );
+});
 
 watch(
   () => props.deckCards,
