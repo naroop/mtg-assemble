@@ -1,9 +1,11 @@
 import { db, type AppEvent } from '@/db';
+import { pushEvents } from './syncService';
 
 export async function appendEvent(event: AppEvent): Promise<void> {
   await db.transaction('rw', db.events, db.decks, db.deckCards, db.sources, async () => {
     await db.events.add(event);
     await applyEvent(event);
+    await pushEvents();
   });
 }
 

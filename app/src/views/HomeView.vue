@@ -99,7 +99,7 @@ const authAction = ref<'signIn' | 'signUp'>('signIn');
 const handleClickSync = async () => {
   try {
     await syncEvents();
-    toast.add({ severity: 'success', summary: 'Sync Complete', detail: 'Your decks and collection have been synced.', life: 3000 });
+    toast.add({ severity: 'success', summary: 'Sync Complete', detail: 'Your decks have been synced.', life: 3000 });
   } catch (error) {
     toast.add({
       severity: 'error',

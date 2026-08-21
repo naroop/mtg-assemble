@@ -260,7 +260,6 @@ async function handleDelete() {
 
   try {
     await deleteDeck({ deckId: deck.value.id });
-    toast.add({ summary: 'Deck Deleted', detail: `"${deck.value.name}" has been deleted.`, severity: 'success', life: 3000 });
     router.push({ name: 'decks' });
   } catch (error) {
     console.error(error);
@@ -275,7 +274,6 @@ async function handleAddCardsToSource() {
 
 async function handleDeleteSource(sourceId: string) {
   await deleteSource({ sourceId });
-  toast.add({ summary: 'Source Deleted', detail: 'The source has been deleted.', severity: 'success', life: 3000 });
 }
 
 async function handleImportAndReplace() {
