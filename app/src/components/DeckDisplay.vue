@@ -25,6 +25,7 @@
           class="rounded transition flex justify-between"
           :class="[
             select ? 'cursor-pointer hover:bg-surface-100 dark:hover:bg-surface-800 p-2' : '',
+            rowHover ? 'cursor-pointer' : '',
             modelValue.includes(row.deckCard.id) ? 'bg-primary-50 dark:bg-primary-900/20' : '',
             select && modelValue.length > 0 && !modelValue.includes(row.deckCard.id) ? 'opacity-50' : ''
           ]"
@@ -84,6 +85,7 @@ const props = defineProps<{
   singleColumn?: boolean;
   filter?: boolean;
   select?: boolean;
+  rowHover?: boolean;
   showUnassigned?: boolean;
   showDeckInfo?: boolean;
 }>();

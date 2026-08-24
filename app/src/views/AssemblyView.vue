@@ -6,6 +6,12 @@
         <div class="text-xl font-semibold mb-1">{{ deck?.name }}</div>
       </RouterLink>
       <div class="flex items-center gap-2 w-full sm:w-auto">
+        <Button
+          label="Acquire All"
+          @click="handleAcquireAll"
+          severity="contrast"
+          size="small"
+          :disabled="deckCards?.every((dc) => dc.quantity === dc.quantityAcquired)" />
         <Button label="Export" severity="info" size="small" @click="handleShowDeckExport" />
         <Button label="Import" size="small" severity="success" @click="handleShowDeckImport" />
         <Button label="Delete" size="small" severity="danger" @click="handleDelete" />
@@ -24,11 +30,11 @@
       <TabPanels class="dark:bg-inherit! p-0!">
         <!-- DECK -->
         <TabPanel class="pt-2 p-4" value="deck">
-          <DeckDisplay :deck-cards="deckCards" show-deck-info />
+          <DeckDisplay :deck-cards="deckCards" show-deck-info row-hover @row-click="handleDeckCardReceived" />
         </TabPanel>
 
         <!-- SOURCES -->
-        <TabPanel class="flex flex-col sm:flex-row gap-4 sm:h-[calc(100vh-11rem)] p-4 overflow-y-auto" value="sources">
+        <TabPanel class="flex flex-col sm:flex-row gap-4 sm:h-[calc(100vh-11rem)] p-4 overflow-x-scroll" value="sources">
           <Card
             class="w-full sm:min-w-md h-fit sm:w-fit"
             v-for="source in sources?.sort((a, b) => {
@@ -208,6 +214,21 @@ async function formSubmit(event: FormSubmitEvent) {
     showSourceCreateForm.value = false;
     event.reset();
   }
+}
+
+function handleAcquireAll() {
+  if (!deckCards.value) return;
+
+  const unacquiredDeckCards = deckCards.value.filter((card) => card.quantityAcquired < card.quantity);
+  const promises = unacquiredDeckCards.map((card) => setCardQuantityAcquired({ deckCardId: card.id, quantity: card.quantity }));
+  Promise.all(promises)
+    .then(() => {
+      toast.add({ summary: 'All cards marked as acquired.', life: 3000, severity: 'success' });
+    })
+    .catch((error) => {
+      console.error(error);
+      toast.add({ summary: 'Error marking cards as acquired.', detail: error.message, life: 3000, severity: 'error' });
+    });
 }
 
 function handleShowSourceDialog(sourceId: string) {
