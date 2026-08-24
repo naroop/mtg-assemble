@@ -80,7 +80,9 @@
 
 <script setup lang="ts">
 import { useAuth } from '@/composables/useAuth';
+import { db } from '@/db';
 import { transitionName } from '@/router/transition';
+import { rebuildProjections } from '@/service/eventService';
 import { online, pendingChanges, syncEvents, syncing } from '@/service/syncService';
 import { Form, type FormSubmitEvent } from '@primevue/forms';
 import { zodResolver } from '@primevue/forms/resolvers/zod';
@@ -148,6 +150,8 @@ const handleClickUser = (event: Event) => {
 async function handleSignOut() {
   try {
     await signOut();
+    await db.events.clear();
+    await rebuildProjections();
     userPopover.value?.hide();
     toast.add({ severity: 'success', summary: 'Signed Out', detail: 'You have been signed out.', life: 3000 });
   } catch (error) {
