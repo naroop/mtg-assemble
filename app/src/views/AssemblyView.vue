@@ -59,8 +59,14 @@
             </template>
             <template #content>
               <div class="flex flex-col h-full min-h-0 gap-2">
-                <div class="flex-1 min-h-0 overflow-y-auto px-2 pr-3">
-                  <DeckDisplay :deck-cards="deckCards" :source-id="source.id" single-column show-deck-info @row-click="handleDeckCardReceived">
+                <div class="flex-1 min-h-0 overflow-y-auto px-2 pr-3 pt-2">
+                  <DeckDisplay
+                    :deck-cards="deckCards"
+                    :source-id="source.id"
+                    single-column
+                    show-deck-info
+                    row-hover
+                    @row-click="handleDeckCardReceived">
                     <template #cardActions="slotProps">
                       <Button
                         icon="pi pi-minus"
