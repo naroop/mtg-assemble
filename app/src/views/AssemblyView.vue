@@ -34,9 +34,16 @@
         </TabPanel>
 
         <!-- SOURCES -->
-        <TabPanel class="flex flex-col sm:flex-row gap-4 sm:h-[calc(100vh-11rem)] p-4 overflow-x-scroll" value="sources">
+        <TabPanel
+          class="flex flex-col sm:flex-row items-stretch gap-4 sm:h-[calc(100vh-11rem)] p-4 overflow-x-auto overflow-y-hidden"
+          value="sources">
           <Card
-            class="w-full sm:min-w-md h-fit sm:w-fit"
+            class="w-full sm:min-w-md sm:w-fit sm:h-full"
+            :pt="{
+              root: { class: 'h-full' },
+              body: { class: 'h-full min-h-0 flex flex-col' },
+              content: { class: 'flex-1 min-h-0 flex flex-col' }
+            }"
             v-for="source in sources?.sort((a, b) => {
               return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
             })"
@@ -51,12 +58,21 @@
               </div>
             </template>
             <template #content>
-              <DeckDisplay :deck-cards="deckCards" :source-id="source.id" single-column show-deck-info @row-click="handleDeckCardReceived">
-                <template #cardActions="slotProps">
-                  <Button icon="pi pi-minus" text severity="danger" size="small" @click.stop="handleRemoveDeckCardFromSource(slotProps.deckCard)" />
-                </template>
-              </DeckDisplay>
-              <Button class="w-full" outlined label="Add Cards" icon="pi pi-plus" text @click="handleShowSourceDialog(source.id)" />
+              <div class="flex flex-col h-full min-h-0 gap-2">
+                <div class="flex-1 min-h-0 overflow-y-auto px-2 pr-3">
+                  <DeckDisplay :deck-cards="deckCards" :source-id="source.id" single-column show-deck-info @row-click="handleDeckCardReceived">
+                    <template #cardActions="slotProps">
+                      <Button
+                        icon="pi pi-minus"
+                        text
+                        severity="danger"
+                        size="small"
+                        @click.stop="handleRemoveDeckCardFromSource(slotProps.deckCard)" />
+                    </template>
+                  </DeckDisplay>
+                </div>
+                <Button class="w-full" outlined label="Add Cards" icon="pi pi-plus" text @click="handleShowSourceDialog(source.id)" />
+              </div>
             </template>
           </Card>
 

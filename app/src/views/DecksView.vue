@@ -7,9 +7,8 @@
         </template>
         <template #title>{{ deck.name }}</template>
         <template #subtitle>
-          <div class="flex flex-col gap-2">
+          <div class="flex flex-col gap-2 mt-2">
             <div class="flex justify-between items-center">
-              <div>Commander/EDH</div>
               <Message :severity="deck.quantityAcquired === deck.quantity ? 'success' : 'warn'"
                 >{{ deck.quantityAcquired }} / {{ deck.quantity }} {{ deck.quantityAcquired === deck.quantity ? '' : 'cards acquired' }}</Message
               >

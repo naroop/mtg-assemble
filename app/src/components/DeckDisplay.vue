@@ -1,26 +1,37 @@
 <template>
-  <InputText v-show="filter" v-model="filterValue" class="mb-3!" placeholder="Filter cards..." />
+  <SelectButton v-show="filter" class="mb-3! mr-2" v-model="viewType" :options="viewTypes" />
+  <InputText v-show="filter" v-model="filterValue" class="mb-3! mr-2" placeholder="Filter cards..." />
+  <MultiSelect
+    v-show="filter"
+    v-model="selectedRarities"
+    class="mb-3!"
+    placeholder="Rarity"
+    :options="rarities"
+    option-label="label"
+    option-value="value"
+    show-clear />
   <div v-show="showDeckInfo" class="flex items-center gap-2">
     <Message size="small">Total: {{ formatUsd(deckCost) }}</Message>
     <Message size="small">Unowned: {{ formatUsd(unownedCost) }}</Message>
   </div>
   <div class="columns-1 gap-4 pt-2" :class="[!singleColumn ? 'sm:columns-2 lg:columns-3' : '']">
     <div
-      v-for="section in organizedDeckRows.filter(
-        (section) => section.rows.filter((row) => row.cachedCard?.raw.name.toLowerCase().includes(filterValue.toLowerCase())).length > 0
-      )"
-      :key="section.type"
+      v-for="section in filteredDeckSections"
+      :key="section.key"
       class="pb-6 mb-4"
       :class="[section.rows.length <= breakAvoidThreshold ? 'break-inside-avoid' : '']">
       <div class="flex items-center gap-2 text-muted-color font-semibold pb-3">
-        <div>{{ section.type.toUpperCase() }}</div>
+        <div class="flex items-center gap-1.5">
+          <img v-for="iconUri in symbolIconUris(section.iconSymbols)" :key="iconUri" class="w-4 h-4" :src="iconUri" alt="mana symbol" />
+          <div>{{ section.label.toUpperCase() }}</div>
+        </div>
         <span class="font-light text-sm">({{ section.rows.length }})</span>
         <span class="ml-auto text-sm mr-2">{{ formatUsd(sectionCost(section.rows)) }}</span>
       </div>
 
       <ul v-if="section.rows?.length" class="flex flex-col" :class="[select ? 'gap-0.5' : 'gap-3']">
         <li
-          v-for="row in section.rows.filter((row) => row.cachedCard?.raw.name.toLowerCase().includes(filterValue.toLowerCase()))"
+          v-for="row in section.rows"
           :key="row.deckCard.id"
           class="rounded transition flex justify-between"
           :class="[
@@ -71,12 +82,22 @@
 <script setup lang="ts">
 import { db, type CachedCard, type CardType, type DeckCard } from '@/db';
 import { determineCardType, determineImageUri, formatUsd } from '@/util/cards-util';
-import { Checkbox, InputText, Message } from 'primevue';
-import { computed, ref, watch } from 'vue';
+import { Checkbox, InputText, Message, MultiSelect, SelectButton } from 'primevue';
+import { SymbologyApi } from 'scryfall-api';
+import { computed, onMounted, ref, watch } from 'vue';
 
 interface DeckRow {
   deckCard: DeckCard;
   cachedCard: CachedCard | null;
+}
+
+type ColorGroupKey = 'white' | 'blue' | 'black' | 'red' | 'green' | 'multicolor' | 'colorless' | 'lands';
+
+interface DeckSection {
+  key: string;
+  label: string;
+  rows: DeckRow[];
+  iconSymbols: string[];
 }
 
 const props = defineProps<{
@@ -92,8 +113,34 @@ const props = defineProps<{
 
 const emits = defineEmits<{ rowClick: [deckCard: DeckCard] }>();
 
-const modelValue = defineModel<string[]>({ default: [] });
+const modelValue = defineModel<string[]>({ default: () => [] });
 const filterValue = ref('');
+
+const viewType = ref('Card Type');
+const viewTypes = ref(['Card Type', 'Color']);
+
+const selectedRarities = ref<string[]>([]);
+const rarities = ref([
+  { label: 'Common', value: 'common' },
+  { label: 'Uncommon', value: 'uncommon' },
+  { label: 'Rare', value: 'rare' },
+  { label: 'Mythic', value: 'mythic' }
+]);
+
+const symbologyBySymbol = ref<Record<string, string>>({});
+
+const colorGroupOrder: ColorGroupKey[] = ['white', 'blue', 'black', 'red', 'green', 'multicolor', 'colorless', 'lands'];
+
+const colorGroupMetadata: Record<ColorGroupKey, { label: string; iconSymbols: string[] }> = {
+  white: { label: 'White', iconSymbols: ['{W}'] },
+  blue: { label: 'Blue', iconSymbols: ['{U}'] },
+  black: { label: 'Black', iconSymbols: ['{B}'] },
+  red: { label: 'Red', iconSymbols: ['{R}'] },
+  green: { label: 'Green', iconSymbols: ['{G}'] },
+  multicolor: { label: 'Multicolor', iconSymbols: ['{W}', '{U}', '{B}', '{R}', '{G}'] },
+  colorless: { label: 'Colorless', iconSymbols: ['{C}'] },
+  lands: { label: 'Lands', iconSymbols: ['{T}'] }
+};
 
 // Sections with more rows than this will be allowed to break across columns instead of
 // being kept together, so one large section (e.g. creatures) doesn't force everything
@@ -152,7 +199,37 @@ watch(
   { immediate: true }
 );
 
-const organizedDeckRows = computed(() => {
+onMounted(async () => {
+  try {
+    const symbols = await SymbologyApi.all();
+    const bySymbol: Record<string, string> = {};
+
+    for (const symbol of symbols) {
+      if (symbol.symbol && symbol.svg_uri) {
+        bySymbol[symbol.symbol] = symbol.svg_uri;
+      }
+    }
+
+    symbologyBySymbol.value = bySymbol;
+  } catch (error) {
+    console.error('Failed to load Scryfall symbology.', error);
+  }
+});
+
+function symbolIconUris(symbols: string[]): string[] {
+  return symbols.map((symbol) => symbologyBySymbol.value[symbol]).filter((iconUri): iconUri is string => Boolean(iconUri));
+}
+
+function sortRowsByName(rows: DeckRow[]): void {
+  rows.sort((a, b) => {
+    const aName = a.cachedCard?.raw?.name ?? '';
+    const bName = b.cachedCard?.raw?.name ?? '';
+
+    return aName.localeCompare(bName);
+  });
+}
+
+function buildTypeSections(rows: DeckRow[]): DeckSection[] {
   const map: Record<CardType, DeckRow[]> = {
     planeswalker: [],
     creature: [],
@@ -165,7 +242,7 @@ const organizedDeckRows = computed(() => {
     unknown: []
   };
 
-  for (const row of deckRows.value ?? []) {
+  for (const row of rows) {
     const card = row.cachedCard?.raw;
     if (!card) continue;
 
@@ -175,21 +252,119 @@ const organizedDeckRows = computed(() => {
     }
   }
 
-  for (const rows of Object.values(map)) {
-    rows.sort((a, b) => {
-      const aName = a.cachedCard?.raw?.name ?? '';
-      const bName = b.cachedCard?.raw?.name ?? '';
-
-      return aName.localeCompare(bName);
-    });
+  for (const typeRows of Object.values(map)) {
+    sortRowsByName(typeRows);
   }
 
   return Object.entries(map)
-    .filter(([, rows]) => rows.length > 0)
-    .map(([type, rows]) => ({
-      type: type as CardType,
-      rows
+    .filter(([, typeRows]) => typeRows.length > 0)
+    .map(([type, typeRows]) => ({
+      key: type,
+      label: type,
+      rows: typeRows,
+      iconSymbols: []
     }));
+}
+
+function determineColorGroup(row: DeckRow): ColorGroupKey {
+  const card = row.cachedCard?.raw;
+  if (!card) {
+    return 'colorless';
+  }
+
+  if (determineCardType(card) === 'land') {
+    return 'lands';
+  }
+
+  const colors = card.colors ?? [];
+
+  if (colors.length === 0) {
+    return 'colorless';
+  }
+
+  if (colors.length > 1) {
+    return 'multicolor';
+  }
+
+  switch (colors[0]) {
+    case 'W':
+      return 'white';
+    case 'U':
+      return 'blue';
+    case 'B':
+      return 'black';
+    case 'R':
+      return 'red';
+    case 'G':
+      return 'green';
+    default:
+      return 'colorless';
+  }
+}
+
+function buildColorSections(rows: DeckRow[]): DeckSection[] {
+  const map: Record<ColorGroupKey, DeckRow[]> = {
+    white: [],
+    blue: [],
+    black: [],
+    red: [],
+    green: [],
+    multicolor: [],
+    colorless: [],
+    lands: []
+  };
+
+  for (const row of rows) {
+    const group = determineColorGroup(row);
+    map[group].push(row);
+  }
+
+  for (const groupRows of Object.values(map)) {
+    sortRowsByName(groupRows);
+  }
+
+  return colorGroupOrder
+    .filter((group) => map[group].length > 0)
+    .map((group) => ({
+      key: group,
+      label: colorGroupMetadata[group].label,
+      rows: map[group],
+      iconSymbols: colorGroupMetadata[group].iconSymbols
+    }));
+}
+
+const groupedDeckSections = computed(() => {
+  const rows = deckRows.value ?? [];
+
+  if (viewType.value === 'Color') {
+    return buildColorSections(rows);
+  }
+
+  return buildTypeSections(rows);
+});
+
+function rowMatchesFilters(row: DeckRow): boolean {
+  const card = row.cachedCard?.raw;
+  if (!card) {
+    return false;
+  }
+
+  const normalizedFilter = filterValue.value.trim().toLowerCase();
+  const nameMatches = !normalizedFilter || card.name.toLowerCase().includes(normalizedFilter);
+  const normalizedCardRarity = card.rarity?.toLowerCase() ?? '';
+  const normalizedSelectedRarities = selectedRarities.value.map((rarity) => rarity.toLowerCase());
+  const rarityMatches = !normalizedSelectedRarities.length || normalizedSelectedRarities.includes(normalizedCardRarity);
+
+  return nameMatches && rarityMatches;
+}
+
+const filteredDeckSections = computed(() => {
+  return groupedDeckSections.value
+    .map((section) => ({
+      ...section,
+      rows: section.rows.filter(rowMatchesFilters)
+    }))
+    .filter((section) => section.rows.length > 0);
 });
 
 function toggleSelection(deckCardId: string) {

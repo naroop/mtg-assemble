@@ -2,7 +2,7 @@
   <div
     class="fixed inset-x-0 top-0 z-10 h-14 bg-linear-to-b dark:from-surface-900/90 from-surface-50/90 from-90% to-transparent pointer-events-none"></div>
 
-  <div class="lg:px-28 2xl:px-64">
+  <div class="lg:px-28 2xl:px-56">
     <div class="sticky flex items-center w-full top-0 z-20 p-1 pt-2 pb-4">
       <Button class="sm:hidden!" size="large" icon="pi pi-bars" text @click="visible = true" />
       <span class="text-primary font-semibold text-lg font-mono ml-2">MTG Assemble</span>
@@ -87,7 +87,8 @@ import { online, pendingChanges, syncEvents, syncing } from '@/service/syncServi
 import { Form, type FormSubmitEvent } from '@primevue/forms';
 import { zodResolver } from '@primevue/forms/resolvers/zod';
 import { Badge, Button, Dialog, Drawer, InputText, Message, Password, Popover, useToast } from 'primevue';
-import { computed, ref, useTemplateRef, watch } from 'vue';
+import { SymbologyApi } from 'scryfall-api';
+import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
 import z from 'zod';
 
 const userPopover = useTemplateRef<InstanceType<typeof Popover>>('userPopover');
@@ -211,4 +212,8 @@ async function formSubmit(event: FormSubmitEvent) {
     isLoading.value = false;
   }
 }
+
+onMounted(async () => {
+  console.log(await SymbologyApi.all());
+});
 </script>

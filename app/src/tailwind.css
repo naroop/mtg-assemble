@@ -1,6 +1,10 @@
 @import 'tailwindcss';
 @import 'tailwindcss-primeui';
 
+html {
+  font-size: 14px;
+}
+
 .slide-left-enter-active,
 .slide-left-leave-active,
 .slide-right-enter-active,
