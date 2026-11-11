@@ -1,4 +1,4 @@
-import { createId, db, nowIso } from '@/db';
+import { createId, db, nowIso, type CachedCard } from '@/db';
 import { CardIdentifierBuilder, Cards } from 'scryfall-api';
 import { appendEvent } from './eventService';
 
@@ -85,4 +85,12 @@ export async function ensureCardsCached(oracleIds: string[]) {
         updatedAt: now
       }))
   );
+}
+
+export async function getCachedCardsByOracleIds(oracleIds: string[]): Promise<Map<string, CachedCard>> {
+  const uniqueOracleIds = [...new Set(oracleIds)];
+  if (!uniqueOracleIds.length) return new Map<string, CachedCard>();
+
+  const cachedCards = await db.cards.where('oracleId').anyOf(uniqueOracleIds).toArray();
+  return new Map<string, CachedCard>(cachedCards.map((card) => [card.oracleId, card]));
 }

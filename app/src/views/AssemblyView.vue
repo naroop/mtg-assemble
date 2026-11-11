@@ -52,6 +52,12 @@
               <div class="flex justify-between items-center">
                 {{ source.name }}
                 <div class="flex items-center gap-2">
+                  <Button
+                    v-tooltip="'Copy List to Clipboard'"
+                    icon="pi pi-copy"
+                    text
+                    severity="secondary"
+                    @click="handleCopyListToClipboard(source.id)" />
                   <Button v-tooltip="'Delete Source'" icon="pi pi-trash" text severity="danger" @click="handleDeleteSource(source.id)" />
                   <Button v-tooltip="'Mark as Received'" icon="pi pi-envelope" text @click="handleMarkReceived(source.id)" />
                 </div>
@@ -155,9 +161,15 @@
 
 <script setup lang="ts">
 import DeckDisplay from '@/components/DeckDisplay.vue';
-import { db, type CachedCard, type DeckCard } from '@/db';
+import { db, type DeckCard } from '@/db';
 import router from '@/router';
-import { assignCardsToSource, bulkAddCardsToDeck, bulkRemoveCardsFromDeck, setCardQuantityAcquired } from '@/service/deckCardService';
+import {
+  assignCardsToSource,
+  bulkAddCardsToDeck,
+  bulkRemoveCardsFromDeck,
+  getCachedCardsByOracleIds,
+  setCardQuantityAcquired
+} from '@/service/deckCardService';
 import { deleteDeck } from '@/service/deckService';
 import { createSource, deleteSource } from '@/service/sourceService';
 import { parseDeckToOracleIds } from '@/util/deck-import';
@@ -264,35 +276,34 @@ function handleShowDeckImport() {
   deckText.value = '';
 }
 
-async function handleShowDeckExport() {
-  showDeckExport.value = true;
+async function createDeckExportText(cards: DeckCard[], commanderOracleId?: string): Promise<string> {
+  const nonCommanderCards = cards.filter((card) => card.oracleId !== commanderOracleId);
+  const cachedCardsByOracleId = await getCachedCardsByOracleIds(nonCommanderCards.map((card) => card.oracleId));
 
-  const oracleIds = [...new Set(deckCards.value?.filter((card) => card.oracleId !== deck.value?.commanderOracleId).map((card) => card.oracleId))];
-  const cachedCards = await db.cards.where('oracleId').anyOf(oracleIds).toArray();
-  const cachedCardsByOracleId = new Map<string, CachedCard>(cachedCards.map((card) => [card.oracleId, card]));
-
-  const deckRows = deckCards.value
-    ?.filter((card) => card.oracleId !== deck.value?.commanderOracleId)
+  const deckText = nonCommanderCards
     .map((deckCard) => ({
-      deckCard,
-      cachedCard: cachedCardsByOracleId.get(deckCard.oracleId) ?? null
-    }));
-
-  if (!deckRows) return;
-
-  deckRows.sort((a, b) => a.cachedCard!.raw.name.toLowerCase().localeCompare(b.cachedCard!.raw.name.toLowerCase()));
-
-  deckText.value = deckRows
-    .map((row) => ({
-      name: row.cachedCard?.raw.name,
-      quantity: row.deckCard.quantity
+      quantity: deckCard.quantity,
+      name: cachedCardsByOracleId.get(deckCard.oracleId)?.raw.name
     }))
+    .filter((row) => Boolean(row.name))
     .sort((a, b) => a.name!.toLowerCase().localeCompare(b.name!.toLowerCase()))
     .map((row) => `${row.quantity} ${row.name}`)
     .join('\n');
 
-  const cachedCommander = await db.cards.get(deck.value!.commanderOracleId);
-  deckText.value = [deckText.value, '\n\n', `1 ${cachedCommander?.raw.name}`].join('');
+  if (!commanderOracleId) return deckText;
+
+  const cachedCommander = await db.cards.get(commanderOracleId);
+  const commanderText = cachedCommander?.raw.name ? `1 ${cachedCommander.raw.name}` : '';
+  if (!commanderText) return deckText;
+  if (!deckText) return commanderText;
+
+  return [deckText, '\n\n', commanderText].join('');
+}
+
+async function handleShowDeckExport() {
+  showDeckExport.value = true;
+
+  deckText.value = await createDeckExportText(deckCards.value ?? [], deck.value?.commanderOracleId);
 }
 
 async function handleDelete() {
@@ -357,6 +368,26 @@ async function handleImportAndReplace() {
   } finally {
     isImportLoading.value = false;
   }
+}
+
+async function handleCopyListToClipboard(sourceId: string) {
+  const sourceDeckCards = deckCards.value?.filter((card) => card.sourceId === sourceId);
+  if (!sourceDeckCards || !sourceDeckCards.length) {
+    toast.add({ summary: 'No cards found for this source.', severity: 'warn', life: 3000 });
+    return;
+  }
+
+  const text = await createDeckExportText(sourceDeckCards);
+
+  navigator.clipboard
+    .writeText(text)
+    .then(() => {
+      toast.add({ summary: 'Copied list to clipboard.', life: 3000, severity: 'success' });
+    })
+    .catch((e) => {
+      console.error(e);
+      toast.add({ summary: 'Failed to copy list', life: 3000, severity: 'error' });
+    });
 }
 
 async function handleMarkReceived(sourceId: string) {
