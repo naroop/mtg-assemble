@@ -4,12 +4,13 @@
   <MultiSelect
     v-show="filter"
     v-model="selectedRarities"
-    class="mb-3!"
+    class="mb-3! mr-2"
     placeholder="Rarity"
     :options="rarities"
     option-label="label"
     option-value="value"
     show-clear />
+  <Button v-show="select" class="mb-3!" label="Select All" @click="selectAll" />
   <div v-show="showDeckInfo" class="flex items-center gap-2">
     <Message size="small">Total: {{ formatUsd(deckCost) }}</Message>
     <Message size="small">Unowned: {{ formatUsd(unownedCost) }}</Message>
@@ -21,7 +22,15 @@
       class="pb-6 mb-4"
       :class="[section.rows.length <= breakAvoidThreshold ? 'break-inside-avoid' : '']">
       <div class="flex items-center gap-2 text-muted-color font-semibold pb-3">
-        <div class="flex items-center gap-1.5">
+        <div :class="['flex items-center gap-1.5', select ? 'ml-2' : '']">
+          <Checkbox
+            v-if="select"
+            class="mr-2"
+            binary
+            :model-value="isSectionSelected(section)"
+            :indeterminate="isSectionPartiallySelected(section)"
+            @update:model-value="toggleSectionSelection(section)"
+            @click.stop />
           <img v-for="iconUri in symbolIconUris(section.iconSymbols)" :key="iconUri" class="w-4 h-4" :src="iconUri" alt="mana symbol" />
           <div>{{ section.label.toUpperCase() }}</div>
         </div>
@@ -37,15 +46,15 @@
           :class="[
             select ? 'cursor-pointer hover:bg-surface-100 dark:hover:bg-surface-800 p-2' : '',
             rowHover ? 'cursor-pointer' : '',
-            modelValue.includes(row.deckCard.id) ? 'bg-primary-50 dark:bg-primary-900/20' : '',
-            select && modelValue.length > 0 && !modelValue.includes(row.deckCard.id) ? 'opacity-50' : ''
+            selectedDeckCardIds.includes(row.deckCard.id) ? 'bg-primary-50 dark:bg-primary-900/20' : '',
+            select && selectedDeckCardIds.length > 0 && !selectedDeckCardIds.includes(row.deckCard.id) ? 'opacity-50' : ''
           ]"
           @click="handleRowClick(row.deckCard)">
           <div class="flex gap-2 items-center">
             <Checkbox
               v-if="select"
               binary
-              :model-value="modelValue.includes(row.deckCard.id)"
+              :model-value="selectedDeckCardIds.includes(row.deckCard.id)"
               @update:model-value="toggleSelection(row.deckCard.id)"
               @click.stop />
 
@@ -82,7 +91,7 @@
 <script setup lang="ts">
 import { db, type CachedCard, type CardType, type DeckCard } from '@/db';
 import { determineCardType, determineImageUri, formatUsd } from '@/util/cards-util';
-import { Checkbox, InputText, Message, MultiSelect, SelectButton } from 'primevue';
+import { Button, Checkbox, InputText, Message, MultiSelect, SelectButton } from 'primevue';
 import { SymbologyApi } from 'scryfall-api';
 import { computed, onMounted, ref, watch } from 'vue';
 
@@ -113,7 +122,7 @@ const props = defineProps<{
 
 const emits = defineEmits<{ rowClick: [deckCard: DeckCard] }>();
 
-const modelValue = defineModel<string[]>({ default: () => [] });
+const selectedDeckCardIds = defineModel<string[]>({ default: () => [] });
 const filterValue = ref('');
 
 const viewType = ref('Card Type');
@@ -367,8 +376,32 @@ const filteredDeckSections = computed(() => {
     .filter((section) => section.rows.length > 0);
 });
 
+function selectAll() {
+  const allDeckCardIds = deckRows.value?.map((row) => row.deckCard.id) ?? [];
+
+  if (!allDeckCardIds.length) {
+    selectedDeckCardIds.value = [];
+    return;
+  }
+
+  const current = new Set(selectedDeckCardIds.value);
+  const allSelected = allDeckCardIds.every((id) => current.has(id));
+
+  if (allSelected) {
+    for (const id of allDeckCardIds) {
+      current.delete(id);
+    }
+  } else {
+    for (const id of allDeckCardIds) {
+      current.add(id);
+    }
+  }
+
+  selectedDeckCardIds.value = [...current];
+}
+
 function toggleSelection(deckCardId: string) {
-  const current = new Set(modelValue.value);
+  const current = new Set(selectedDeckCardIds.value);
 
   if (current.has(deckCardId)) {
     current.delete(deckCardId);
@@ -376,7 +409,36 @@ function toggleSelection(deckCardId: string) {
     current.add(deckCardId);
   }
 
-  modelValue.value = [...current];
+  selectedDeckCardIds.value = [...current];
+}
+
+function isSectionSelected(section: DeckSection): boolean {
+  if (!section.rows.length) {
+    return false;
+  }
+
+  return section.rows.every((row) => selectedDeckCardIds.value.includes(row.deckCard.id));
+}
+
+function isSectionPartiallySelected(section: DeckSection): boolean {
+  const selectedCount = section.rows.filter((row) => selectedDeckCardIds.value.includes(row.deckCard.id)).length;
+
+  return selectedCount > 0 && selectedCount < section.rows.length;
+}
+
+function toggleSectionSelection(section: DeckSection) {
+  const current = new Set(selectedDeckCardIds.value);
+  const shouldSelectAll = !isSectionSelected(section);
+
+  for (const row of section.rows) {
+    if (shouldSelectAll) {
+      current.add(row.deckCard.id);
+    } else {
+      current.delete(row.deckCard.id);
+    }
+  }
+
+  selectedDeckCardIds.value = [...current];
 }
 
 function handleRowClick(deckCard: DeckCard) {
