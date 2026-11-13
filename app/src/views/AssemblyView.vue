@@ -30,7 +30,7 @@
       <TabPanels class="dark:bg-inherit! p-0!">
         <!-- DECK -->
         <TabPanel class="pt-2 p-4" value="deck">
-          <DeckDisplay :deck-cards="deckCards" show-deck-info row-hover @row-click="handleDeckCardReceived" />
+          <DeckDisplay :deck-cards="deckCards" filter show-deck-info row-hover @row-click="handleDeckCardReceived" />
         </TabPanel>
 
         <!-- SOURCES -->
