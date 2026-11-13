@@ -340,8 +340,12 @@ async function handleImportAndReplace() {
 
     const parsedDeck = await parseDeckToOracleIds(deckText.value);
     const existingDeckCards = deckCards.value ?? [];
-    const cardsToRemove = existingDeckCards.filter((deckCard) => !parsedDeck.some((card) => card.oracleId === deckCard.oracleId));
-    const cardsToAdd = parsedDeck.filter((card) => !existingDeckCards.some((deckCard) => deckCard.oracleId === card.oracleId));
+    const cardsToRemove = existingDeckCards.filter(
+      (deckCard) => !parsedDeck.some((card) => card.oracleId === deckCard.oracleId && card.quantity === deckCard.quantity)
+    );
+    const cardsToAdd = parsedDeck.filter(
+      (card) => !existingDeckCards.some((deckCard) => deckCard.oracleId === card.oracleId && deckCard.quantity === card.quantity)
+    );
 
     if (!cardsToRemove.length && !cardsToAdd.length) {
       toast.add({ summary: 'Import Cancelled', detail: 'No changes detected in the new list.', life: 3000, severity: 'warn' });
